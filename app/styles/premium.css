@@ -1,0 +1,165 @@
+:root{
+  --ibpv-cream:#fbf7f2;
+  --ibpv-cream-2:#f2e5d8;
+  --ibpv-brown:#4f2d1e;
+  --ibpv-brown-2:#74472f;
+  --ibpv-bronze:#b47a43;
+  --ibpv-ink:#291b16;
+  --ibpv-motion-fast:180ms;
+  --ibpv-motion-click:120ms;
+  --ibpv-motion-page:920ms;
+  --ibpv-motion-modal:480ms;
+  --ibpv-ease:cubic-bezier(.22,1,.36,1);
+  --ibpv-ease-soft:cubic-bezier(.2,.8,.2,1);
+}
+
+html{background:var(--ibpv-cream);scroll-behavior:auto}
+body{background:transparent!important}
+body::after{
+  content:"";position:fixed;inset:-18%;z-index:-6;pointer-events:none;
+  background:
+    radial-gradient(circle at 15% 15%,rgba(180,122,67,.18),transparent 28%),
+    radial-gradient(circle at 84% 38%,rgba(114,71,47,.12),transparent 30%),
+    radial-gradient(circle at 42% 88%,rgba(255,255,255,.8),transparent 34%),
+    linear-gradient(145deg,#fff 0%,#fbf7f2 44%,#efe0d2 100%);
+  animation:ambientDrift 24s ease-in-out infinite alternate;
+  transform:translate3d(0,0,0) scale(1.04)
+}
+@keyframes ambientDrift{to{transform:translate3d(1.2%,-1%,0) scale(1.07)}}
+
+#ambient-layer{position:fixed;inset:0;z-index:-4;overflow:hidden;pointer-events:none}
+.ambient-orb{position:absolute;border-radius:999px;filter:blur(2px);opacity:.42;will-change:transform}
+.ambient-orb.one{width:34vw;height:34vw;left:-10vw;top:18vh;background:radial-gradient(circle,rgba(180,122,67,.18),transparent 68%)}
+.ambient-orb.two{width:30vw;height:30vw;right:-7vw;top:45vh;background:radial-gradient(circle,rgba(79,45,30,.13),transparent 70%)}
+.ambient-line{position:absolute;left:50%;top:0;width:1px;height:100%;background:linear-gradient(transparent,rgba(180,122,67,.18),transparent);opacity:.55}
+
+#intro-curtain{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;background:linear-gradient(145deg,#fff,#f3e8df);transition:opacity 700ms var(--ibpv-ease),visibility 700ms;animation:introFailsafe 1ms linear 3500ms forwards}
+#intro-curtain.is-gone{opacity:0;visibility:hidden}
+@keyframes introFailsafe{to{opacity:0;visibility:hidden;pointer-events:none}}
+.intro-mark{display:grid;justify-items:center;gap:18px;transform:translateY(10px);animation:introMark 900ms var(--ibpv-ease) both}
+.intro-mark img{width:112px;height:auto;filter:drop-shadow(0 18px 28px rgba(79,45,30,.12))}
+.intro-mark span{font-size:11px;font-weight:900;letter-spacing:.22em;color:var(--ibpv-brown);text-transform:uppercase}
+.intro-loader{width:130px;height:2px;background:rgba(79,45,30,.1);overflow:hidden;border-radius:99px}
+.intro-loader::after{content:"";display:block;width:45%;height:100%;background:linear-gradient(90deg,transparent,var(--ibpv-bronze),transparent);animation:introLoad 1.05s ease-in-out infinite}
+@keyframes introMark{from{opacity:0;transform:translateY(28px) scale(.94);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+@keyframes introLoad{from{transform:translateX(-120%)}to{transform:translateX(290%)}}
+
+#shared-brand{position:fixed;left:28px;top:22px;z-index:1200;display:flex;align-items:center;gap:11px;padding:8px 12px 8px 9px;border:1px solid rgba(79,45,30,.09);border-radius:16px;background:rgba(255,255,255,.72);backdrop-filter:blur(18px);box-shadow:0 10px 35px rgba(79,45,30,.08);opacity:0;transform:translateY(-14px) scale(.94);pointer-events:none;transition:opacity 420ms var(--ibpv-ease),transform 520ms var(--ibpv-ease)}
+#shared-brand.visible{opacity:1;transform:none}
+#shared-brand img{width:37px;height:37px;object-fit:contain}
+#shared-brand strong{display:block;font-size:12px;color:var(--ibpv-brown)}
+#shared-brand small{display:block;font-size:9px;letter-spacing:.08em;color:#8b6a59;text-transform:uppercase;margin-top:1px}
+
+#flow-progress{position:fixed;right:24px;top:50%;z-index:1100;display:grid;gap:11px;transform:translateY(-50%);opacity:0;transition:opacity 300ms}
+body.flow-page #flow-progress{opacity:1}
+.flow-dot{width:7px;height:7px;border-radius:50%;border:0;background:rgba(79,45,30,.22);padding:0;transition:transform 300ms var(--ibpv-ease),background 300ms,box-shadow 300ms;cursor:pointer}
+.flow-dot.active{transform:scale(1.7);background:var(--ibpv-bronze);box-shadow:0 0 0 5px rgba(180,122,67,.12)}
+
+/* Landing experience: one connected vertical world */
+#app.flow-mode{perspective:1200px;scroll-snap-type:none!important}
+#app.flow-mode .flow-section{background:transparent!important;isolation:isolate}
+#app.flow-mode .flow-section::before{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.02))!important}
+#app.flow-mode .flow-section::after{content:"";position:absolute;left:10%;right:10%;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(180,122,67,.22),transparent)!important}
+#app.flow-mode .flow-section .center-card,
+#app.flow-mode .flow-section .page-shell{will-change:transform,opacity,filter;transform:translate3d(0,var(--section-y,0px),0) scale(var(--section-scale,1));opacity:var(--section-opacity,1);filter:blur(var(--section-blur,0px));transition:filter 160ms linear}
+
+.welcome-screen .center-card{max-width:900px}
+.welcome-logo{width:min(190px,28vw)!important;filter:drop-shadow(0 26px 38px rgba(79,45,30,.12))}
+.welcome-title{font-size:clamp(28px,4vw,53px)!important;line-height:1.11!important;letter-spacing:-.035em;max-width:850px;margin-inline:auto}
+.welcome-title span{display:block}
+
+/* premium interactive language */
+button,.profile-card,.big-action,.nav-item{transform:translateZ(0);will-change:transform,box-shadow}
+.primary-btn,.outline-btn,.success-btn,.presentation-btn,.profile-card,.big-action,.text-btn{
+  position:relative;overflow:hidden;transition:transform var(--ibpv-motion-fast) var(--ibpv-ease),box-shadow var(--ibpv-motion-fast),background var(--ibpv-motion-fast),border-color var(--ibpv-motion-fast),color var(--ibpv-motion-fast)
+}
+.primary-btn::after,.outline-btn::after,.success-btn::after,.presentation-btn::after,.profile-card::after,.big-action::after{
+  content:"";position:absolute;inset:-60% auto -60% -45%;width:35%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.44),transparent);opacity:0;pointer-events:none
+}
+.primary-btn:hover,.success-btn:hover,.presentation-btn:hover{transform:translateY(-2px) scale(1.035);box-shadow:0 16px 32px rgba(79,45,30,.18)}
+.outline-btn:hover,.text-btn:hover{transform:translateY(-2px) scale(1.02)}
+.profile-card:hover,.big-action:hover{transform:translateY(-7px) scale(1.018);box-shadow:0 22px 48px rgba(79,45,30,.13)}
+.primary-btn:hover::after,.outline-btn:hover::after,.success-btn:hover::after,.presentation-btn:hover::after,.profile-card:hover::after,.big-action:hover::after{opacity:1;animation:buttonShine 850ms ease forwards}
+button:active,.profile-card:active,.big-action:active{transform:scale(.975)!important;transition-duration:var(--ibpv-motion-click)}
+@keyframes buttonShine{from{left:-45%}to{left:125%}}
+
+/* stagger entrances */
+[data-animate]{opacity:0;transform:translateY(26px) scale(.98);filter:blur(7px)}
+.section-visible [data-animate]{animation:staggerIn 760ms var(--ibpv-ease) forwards;animation-delay:var(--delay,0ms)}
+@keyframes staggerIn{to{opacity:1;transform:none;filter:none}}
+
+/* FLIP / container morph overlay */
+#morph-layer{position:fixed;z-index:4500;pointer-events:none;border-radius:24px;background:rgba(255,255,255,.94);border:1px solid rgba(79,45,30,.09);box-shadow:0 34px 90px rgba(79,45,30,.23);backdrop-filter:blur(18px);opacity:0;transform-origin:center;will-change:left,top,width,height,border-radius,opacity,transform}
+#morph-layer.active{opacity:1}
+body.morphing #app{filter:saturate(.92)}
+
+/* App reveal and card orchestration */
+.app-view.app-reveal .workspace-header>*{animation:staggerIn 620ms var(--ibpv-ease) both}
+.app-view.app-reveal .workspace-header>*:nth-child(2){animation-delay:90ms}
+.app-view.app-reveal .report-config{animation:staggerIn 660ms var(--ibpv-ease) 120ms both}
+.app-view.app-reveal .action-row{animation:staggerIn 660ms var(--ibpv-ease) 190ms both}
+.app-view.app-reveal .dashboard-grid{animation:staggerIn 700ms var(--ibpv-ease) 260ms both}
+
+/* modal cinematic treatment */
+dialog{transition:opacity 260ms var(--ibpv-ease),transform 400ms var(--ibpv-ease),filter 400ms var(--ibpv-ease);transform:scale(.88) translateY(24px);opacity:0;filter:blur(8px)}
+dialog[open]{transform:none;opacity:1;filter:none;animation:dialogIn var(--ibpv-motion-modal) var(--ibpv-ease) both}
+dialog::backdrop{background:rgba(45,29,22,.34);backdrop-filter:blur(11px);animation:backdropIn 360ms ease both}
+@keyframes dialogIn{from{transform:scale(.86) translateY(24px);opacity:0;filter:blur(9px)}to{transform:none;opacity:1;filter:none}}
+@keyframes backdropIn{from{opacity:0}to{opacity:1}}
+
+/* focus and micro interaction */
+input,select,textarea{transition:border-color 180ms,box-shadow 180ms,transform 180ms;background-color:rgba(255,255,255,.88)!important}
+input:focus,select:focus,textarea:focus{outline:none!important;border-color:rgba(180,122,67,.72)!important;box-shadow:0 0 0 4px rgba(180,122,67,.11)!important;transform:translateY(-1px)}
+.card,.filter-panel,.glass-card{box-shadow:0 18px 55px rgba(79,45,30,.075)!important;border-color:rgba(79,45,30,.08)!important}
+
+#toast-stack{position:fixed;right:22px;bottom:22px;z-index:6000;display:grid;gap:10px}
+.ibpv-toast{min-width:280px;max-width:390px;padding:14px 16px;border-radius:16px;background:rgba(45,29,22,.94);color:#fff;box-shadow:0 24px 58px rgba(0,0,0,.22);backdrop-filter:blur(16px);animation:toastIn 450ms var(--ibpv-ease) both}
+.ibpv-toast strong{display:block;font-size:13px}.ibpv-toast span{display:block;font-size:11px;opacity:.75;margin-top:3px}
+@keyframes toastIn{from{opacity:0;transform:translateX(28px) scale(.94)}to{opacity:1;transform:none}}
+
+@media(max-width:700px){
+  #shared-brand{left:14px;top:12px}#flow-progress{right:10px}.welcome-logo{width:145px!important}.welcome-title{font-size:30px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  /* Keep a visible but shorter transition instead of removing motion entirely. */
+  :root{--ibpv-motion-page:460ms;--ibpv-motion-modal:260ms}
+  body::after{animation:none}
+}
+
+/* V1.2 — Motion restoration and modern interaction layer */
+body:not(.app-page) .screen.flow-section{content-visibility:auto;contain-intrinsic-size:100svh}
+.section-visible .profile-card:nth-child(1){animation-delay:170ms!important}
+.section-visible .profile-card:nth-child(2){animation-delay:260ms!important}
+
+.profile-icon{display:inline-grid;place-items:center;transition:transform 420ms var(--ibpv-ease),filter 420ms var(--ibpv-ease)}
+.profile-card:hover .profile-icon{transform:translateY(-4px) rotate(-3deg) scale(1.08);filter:drop-shadow(0 10px 12px rgba(79,45,30,.13))}
+.profile-card:nth-child(2):hover .profile-icon{transform:translateY(-4px) rotate(3deg) scale(1.08)}
+
+.card,.summary-card,.info-card,.table-card{transition:transform 260ms var(--ibpv-ease),box-shadow 260ms var(--ibpv-ease),border-color 260ms ease}
+.card:hover,.summary-card:hover,.info-card:hover{transform:translateY(-3px);box-shadow:0 24px 62px rgba(79,45,30,.105)!important;border-color:rgba(180,122,67,.22)!important}
+.transaction-row:not(.header){transition:background 180ms ease,transform 180ms var(--ibpv-ease)}
+.transaction-row:not(.header):hover{background:#fffaf5;transform:translateX(3px)}
+.mini-btn{transition:transform 160ms var(--ibpv-ease),box-shadow 160ms ease,background 160ms ease}
+.mini-btn:hover{transform:translateY(-2px) scale(1.07);box-shadow:0 8px 16px rgba(35,84,145,.14)}
+.mini-btn:active{transform:scale(.92)!important}
+
+/* Current app views enter with a modern reveal sequence. */
+.app-view.active .sidebar{animation:sidebarReveal 620ms var(--ibpv-ease) both}
+.app-view.active .workspace-header{animation:headerReveal 700ms 80ms var(--ibpv-ease) both}
+.app-view.active .workspace-content>*{opacity:0;animation:contentReveal 700ms var(--ibpv-ease) forwards}
+.app-view.active .workspace-content>*:nth-child(1){animation-delay:150ms}
+.app-view.active .workspace-content>*:nth-child(2){animation-delay:230ms}
+.app-view.active .workspace-content>*:nth-child(3){animation-delay:310ms}
+@keyframes sidebarReveal{from{opacity:0;transform:translateX(-34px)}to{opacity:1;transform:none}}
+@keyframes headerReveal{from{opacity:0;transform:translateY(-24px);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+@keyframes contentReveal{from{opacity:0;transform:translateY(24px) scale(.985);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+
+/* Keep essential, short motion even when Windows requests reduced motion. */
+@media(prefers-reduced-motion:reduce){
+  #intro-curtain,.intro-mark,.intro-loader::after,
+  [data-animate],.section-visible [data-animate],dialog[open],dialog::backdrop,
+  .app-view.active .sidebar,.app-view.active .workspace-header,.app-view.active .workspace-content>*{
+    animation-duration:360ms!important;transition-duration:260ms!important;
+  }
+  .ambient-orb,body::after{animation:none!important}
+}

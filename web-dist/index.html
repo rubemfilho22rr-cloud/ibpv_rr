@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; object-src 'self' blob:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' blob:; base-uri 'self'; form-action 'self'" />
+  <title>Relatório Financeiro IBPV — v1.5.4 Online</title>
+  <script type="module" crossorigin src="./assets/index-CN90vuM0.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-96deRGWP.css">
+</head>
+<body>
+  <div id="intro-curtain" aria-hidden="true">
+    <div class="intro-mark">
+      <img src="./assets/logo-ibpv-DlyyL0eL.png" alt="" />
+      <span>Relatório Financeiro IBPV</span>
+      <div class="intro-loader"></div>
+    </div>
+  </div>
+
+  <div id="ambient-layer" aria-hidden="true">
+    <span class="ambient-orb one"></span>
+    <span class="ambient-orb two"></span>
+    <span class="ambient-line"></span>
+  </div>
+
+  <div id="shared-brand" aria-hidden="true">
+    <img src="./assets/logo-ibpv-DlyyL0eL.png" alt="" />
+    <div><strong>Relatório Financeiro</strong><small>Igreja Batista Palavra da Vida</small></div>
+  </div>
+
+  <nav id="flow-progress" aria-label="Etapas iniciais">
+    <button class="flow-dot" data-target="welcome" aria-label="Boas-vindas"></button>
+    <button class="flow-dot" data-target="about" aria-label="Apresentação"></button>
+    <button class="flow-dot" data-target="profile" aria-label="Escolha de acesso"></button>
+  </nav>
+
+  <div id="morph-layer" aria-hidden="true"></div>
+  <div id="toast-stack" aria-live="polite"></div>
+
+  <main id="app">
+    <section class="screen active welcome-screen" data-screen="welcome">
+      <div class="center-card transparent-card">
+        <img class="welcome-logo" src="./assets/logo-ibpv-DlyyL0eL.png" alt="Igreja Batista Palavra da Vida" />
+        <h1 class="welcome-title"><span>Olá! Seja bem-vindo ao</span><span>Relatório Financeiro da</span><span>Igreja Batista Palavra da Vida</span></h1>
+        <button class="primary-btn" data-go="about">Continuar</button>
+      </div>
+    </section>
+
+    <section class="screen about-screen" data-screen="about">
+      <div class="center-card glass-card">
+        <span class="eyebrow">Relatório Financeiro IBPV</span>
+        <h2>Transparência, organização e responsabilidade</h2>
+        <p>Esta plataforma tem o intuito de facilitar a elaboração e a apresentação dos relatórios financeiros da Igreja Batista Palavra da Vida, contribuindo para uma administração organizada, transparente e responsável.</p>
+        <blockquote>“Pois estamos tendo o cuidado de fazer o que é correto, não apenas aos olhos do Senhor, mas também aos olhos dos homens.”<strong>2 Coríntios 8:21</strong></blockquote>
+        <button class="primary-btn" data-go="profile">Continuar</button>
+      </div>
+    </section>
+
+    <section class="screen profile-screen" data-screen="profile">
+      <div class="page-shell narrow-shell">
+        <div class="section-heading">
+          <span class="eyebrow">Escolha de acesso</span>
+          <h2>Como deseja entrar?</h2>
+          <p>Escolha a área correspondente ao seu perfil.</p>
+        </div>
+        <div class="profile-grid">
+          <button class="profile-card member-card" data-go="member-identification">
+            <span class="profile-icon">👥</span>
+            <h3>Membros</h3>
+            <p>Consulte relatórios já publicados, visualize períodos e baixe os PDFs disponíveis.</p>
+          </button>
+          <button class="profile-card admin-card" data-go="restricted">
+            <span class="profile-icon">🛡️</span>
+            <h3>Tesouraria / Conselho Fiscal</h3>
+            <p>Crie, edite, revise e publique relatórios financeiros da igreja.</p>
+          </button>
+        </div>
+        <button class="text-btn" data-go="about">Voltar</button>
+      </div>
+    </section>
+
+    <section class="screen form-screen" data-screen="member-identification">
+      <div class="center-card glass-card small-card">
+        <span class="eyebrow">Área dos membros</span>
+        <h2>Identificação</h2>
+        <p>Entre com a conta fornecida pela igreja para acessar o Portal de Transparência.</p>
+        <form id="member-form" class="stack-form">
+          <label>E-mail<input id="member-name" type="email" autocomplete="username" required placeholder="seuemail@exemplo.com" /></label>
+          <label>Senha<input id="member-password" type="password" autocomplete="current-password" required placeholder="Digite sua senha" /></label>
+          <button class="primary-btn" type="submit">Continuar</button>
+        </form>
+        <button class="text-btn" data-go="profile">Voltar</button>
+      </div>
+    </section>
+
+    <section class="screen portal-screen" data-screen="member-portal">
+      <div class="page-shell">
+        <header class="topbar simple-topbar">
+          <div><span class="eyebrow">Portal de Transparência</span><h2 id="member-welcome">Bem-vindo</h2></div>
+          <button class="outline-btn" data-go="profile">Sair</button>
+        </header>
+        <section class="filter-panel">
+          <label>Ano<select id="portal-year"><option>2026</option><option>2025</option></select></label>
+          <label>Periodicidade<select id="portal-frequency"><option>Mensal</option><option>Bimestral</option><option>Trimestral</option><option>Quadrimestral</option><option>Semestral</option><option>Anual</option></select></label>
+          <label>Período<select id="portal-period"><option>Janeiro</option><option>Fevereiro</option><option>1º Trimestre</option></select></label>
+        </section>
+        <section>
+          <div class="section-heading left"><span class="eyebrow">Relatórios disponíveis</span><h2>Documentos publicados</h2></div>
+          <div id="published-reports" class="report-grid"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="screen restricted-screen" data-screen="restricted">
+      <div class="center-card glass-card small-card">
+        <span class="profile-icon">🔒</span>
+        <span class="eyebrow">Área restrita</span>
+        <h2>Tesouraria e Conselho Fiscal</h2>
+        <p>Esta área é destinada exclusivamente aos responsáveis pela administração financeira da Igreja Batista Palavra da Vida.</p>
+        <button class="primary-btn" data-go="admin-auth">Entrar</button>
+        <button class="text-btn" data-go="profile">Voltar</button>
+      </div>
+    </section>
+
+    <section class="screen auth-screen" data-screen="admin-auth">
+      <div class="center-card glass-card small-card">
+        <span class="eyebrow">Acesso administrativo</span>
+        <h2 id="auth-title">Primeiro acesso</h2>
+        <p id="auth-description">Crie o primeiro usuário administrativo deste computador.</p>
+        <form id="auth-form" class="stack-form">
+          <label>E-mail<input id="admin-name" type="email" autocomplete="username" required placeholder="seuemail@exemplo.com" /></label>
+          <label id="activation-group" hidden>Senha de ativação<input id="activation-password" type="password" /></label>
+          <label>Senha<input id="admin-password" type="password" autocomplete="current-password" required placeholder="Digite sua senha" /></label>
+          <button class="primary-btn" type="submit" id="auth-submit">Criar usuário</button>
+        </form>
+        <button class="text-btn" data-go="restricted">Voltar</button>
+      </div>
+    </section>
+
+    <section class="screen admin-screen" data-screen="admin-dashboard">
+      <div class="app-layout">
+        <aside class="sidebar">
+          <div class="brand-block"><img class="sidebar-logo" src="./assets/logo-ibpv-DlyyL0eL.png" alt="IBPV" /><div><strong>IBPV</strong><span>Relatório Financeiro</span></div></div>
+          <nav>
+            <button class="nav-item active" data-admin-tab="report">▣ Relatório</button>
+            <button class="nav-item" data-admin-tab="attachments">▤ Anexos</button>
+            <button class="nav-item" data-admin-tab="preview">◫ Pré-visualização</button>
+            <button class="nav-item" id="presentation-nav">▰ Apresentação</button>
+            <button class="nav-item" data-admin-tab="published">◉ Publicados</button>
+            <button class="nav-item" id="users-nav">♟ Usuários</button>
+            <button class="nav-item" data-admin-tab="settings">⚙ Configurações</button>
+          </nav>
+          <div class="sidebar-footer"><button id="profile-menu-btn" class="profile-mini"><span id="logged-user">Usuário</span><small>Meu perfil</small></button><button id="logout-btn" class="text-btn light">Sair</button></div>
+        </aside>
+
+        <section class="workspace">
+          <header class="workspace-header">
+            <div>
+              <span class="status-badge">Em elaboração</span>
+              <h1 id="report-title">Relatório Financeiro — Janeiro de 2026</h1>
+              <p id="report-meta">Relatório salvo localmente neste computador.</p>
+            </div>
+            <div class="header-actions">
+              <button id="save-report" class="outline-btn">Salvar</button>
+              <button id="preview-report" class="outline-btn">Visualizar</button>
+              <button id="generate-pptx" class="presentation-btn">Gerar PowerPoint</button>
+              <button id="publish-report" class="success-btn">Publicar</button>
+            </div>
+          </header>
+
+          <div class="workspace-content">
+            <section class="report-config card">
+              <label>Periodicidade do relatório<select id="report-frequency"><option>Mensal</option><option>Bimestral</option><option>Trimestral</option><option>Quadrimestral</option><option>Semestral</option><option>Anual</option></select></label>
+              <label>Ano<select id="report-year"><option>2026</option><option>2025</option><option>2027</option></select></label>
+              <label>Período<select id="report-period" aria-describedby="period-help"></select><small id="period-help" class="field-help">As opções mudam conforme a periodicidade.</small></label>
+              <label>Saldo anterior<input id="previous-balance" type="number" step="0.01" value="6847.50" /></label>
+            </section>
+
+            <section class="action-row">
+              <button class="big-action entry-action" data-open-modal="entrada"><strong>＋ Adicionar entrada</strong><span>Registrar uma nova entrada</span></button>
+              <button class="big-action expense-action" data-open-modal="saida"><strong>− Adicionar despesa</strong><span>Registrar uma nova despesa</span></button>
+              <input id="search-transaction" class="search-input" type="search" placeholder="Buscar lançamento..." />
+            </section>
+
+            <section class="dashboard-grid">
+              <div class="transactions-column">
+                <section class="card table-card"><div class="card-title green">Entradas</div><div id="entries-list" class="transaction-list"></div></section>
+                <section class="card table-card"><div class="card-title red">Despesas</div><div id="expenses-list" class="transaction-list"></div></section>
+              </div>
+              <aside class="summary-column">
+                <section class="card summary-card"><h3>Resumo financeiro</h3><div class="summary-line"><span>Saldo anterior</span><strong id="summary-previous">R$ 0,00</strong></div><div class="summary-line green"><span>Total de entradas</span><strong id="summary-entries">R$ 0,00</strong></div><div class="summary-line red"><span>Total de despesas</span><strong id="summary-expenses">R$ 0,00</strong></div><div class="summary-total"><span>Saldo final</span><strong id="summary-final">R$ 0,00</strong></div></section>
+                <section class="card info-card"><h3>Informações do relatório</h3><p><span>Status</span><strong>Em elaboração</strong></p><p><span>Responsável</span><strong id="report-owner">—</strong></p><p><span>Última alteração</span><strong id="last-update">—</strong></p></section>
+              </aside>
+            </section>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="transaction-modal" class="modal">
+    <form method="dialog" id="transaction-form" class="modal-card">
+      <div class="modal-header"><div><span class="eyebrow" id="modal-kind">Novo lançamento</span><h2 id="modal-title">Adicionar entrada</h2></div><button type="button" id="close-modal" class="icon-btn">×</button></div>
+      <input type="hidden" id="editing-id" />
+      <input type="hidden" id="transaction-type" />
+      <div class="form-grid">
+        <label>Data<input id="transaction-date" type="date" required /></label>
+        <label>Valor<input id="transaction-value" type="number" min="0.01" step="0.01" required /></label>
+        <label class="span-2">Descrição<input id="transaction-description" type="text" required /></label>
+        <label>Categoria<input id="transaction-category" type="text" placeholder="Ex.: Dízimos, Contas" /></label>
+        <label>Forma<input id="transaction-method" type="text" placeholder="Pix, dinheiro, transferência" /></label>
+        <label class="span-2">Observações<textarea id="transaction-notes" rows="3"></textarea></label>
+        <div class="span-2 attachment-field">
+          <div class="attachment-field-heading"><div><strong>Anexos do lançamento</strong><small>PDF, JPG, PNG ou WEBP — até 10 MB por arquivo.</small></div><span id="transaction-attachment-count" class="attachment-count">0 arquivos</span></div>
+          <input id="transaction-files" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple hidden />
+          <button type="button" id="transaction-dropzone" class="attachment-dropzone">
+            <span class="attachment-drop-icon">↥</span>
+            <strong>Arraste os arquivos para cá</strong>
+            <small>ou clique para selecionar vários arquivos</small>
+          </button>
+          <div id="transaction-attachments-list" class="attachment-list compact"></div>
+        </div>
+      </div>
+      <div class="modal-actions"><button type="button" id="cancel-modal" class="outline-btn">Cancelar</button><button type="submit" class="primary-btn">Salvar lançamento</button></div>
+    </form>
+  </dialog>
+
+
+  <dialog id="attachments-modal" class="modal">
+    <div class="modal-card attachments-modal-card">
+      <div class="modal-header"><div><span class="eyebrow">Central de documentos</span><h2>Anexos do relatório</h2><p>Documentos gerais e comprovantes vinculados aos lançamentos do período atual.</p></div><button type="button" id="close-attachments" class="icon-btn">×</button></div>
+      <section class="general-upload-card">
+        <div><strong>Documentos gerais</strong><small>Extratos bancários, atas, balancetes e outros arquivos do relatório.</small></div>
+        <input id="general-files" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple hidden />
+        <button type="button" id="general-dropzone" class="attachment-dropzone small">
+          <span class="attachment-drop-icon">＋</span><strong>Adicionar documentos</strong><small>Arraste ou clique para selecionar</small>
+        </button>
+      </section>
+      <div class="attachment-tabs">
+        <button class="attachment-tab active" data-attachment-filter="all">Todos</button>
+        <button class="attachment-tab" data-attachment-filter="general">Documentos gerais</button>
+        <button class="attachment-tab" data-attachment-filter="entrada">Entradas</button>
+        <button class="attachment-tab" data-attachment-filter="saida">Despesas</button>
+      </div>
+      <div id="all-attachments-list" class="attachment-manager-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="preview-modal" class="modal preview-modal">
+    <div class="modal-card preview-card">
+      <div class="modal-header"><div><span class="eyebrow">Pré-visualização</span><h2>Relatório financeiro</h2></div><button type="button" id="close-preview" class="icon-btn">×</button></div>
+      <div id="preview-content" class="print-sheet"></div>
+      <div class="modal-actions"><button id="print-report" class="primary-btn">Imprimir / Salvar como PDF</button></div>
+    </div>
+  </dialog>
+
+
+  <dialog id="presentation-modal" class="modal">
+    <div class="modal-card presentation-modal-card">
+      <div class="modal-header"><div><span class="eyebrow">Apresentação da Assembleia</span><h2>Gerar PowerPoint</h2><p>Escolha o nível de detalhamento. O arquivo será editável no Microsoft PowerPoint.</p></div><button type="button" id="close-presentation" class="icon-btn">×</button></div>
+      <div class="presentation-options">
+        <label class="presentation-option"><input type="radio" name="presentation-duration" value="5" checked><span><strong>5 minutos</strong><small>Resumo, totais e gráficos principais.</small></span></label>
+        <label class="presentation-option"><input type="radio" name="presentation-duration" value="10"><span><strong>10 minutos</strong><small>Inclui categorias, maiores despesas e evolução no período.</small></span></label>
+        <label class="presentation-option"><input type="radio" name="presentation-duration" value="20"><span><strong>20 minutos</strong><small>Apresentação completa com tabelas detalhadas.</small></span></label>
+      </div>
+      <div class="presentation-summary"><span>Identidade visual IBPV</span><span>Gráficos automáticos</span><span>Arquivo .PPTX editável</span></div>
+      <div class="modal-actions"><button type="button" id="cancel-presentation" class="outline-btn">Cancelar</button><button type="button" id="download-presentation" class="presentation-btn">Baixar apresentação</button></div>
+    </div>
+  </dialog>
+
+
+  <dialog id="users-modal" class="modal">
+    <div class="modal-card users-modal-card">
+      <div class="modal-header"><div><span class="eyebrow">Configurações</span><h2>Usuários administrativos</h2><p>Cadastre e edite os acessos da Tesouraria e do Conselho Fiscal.</p></div><button type="button" id="close-users" class="icon-btn">×</button></div>
+      <div class="users-toolbar"><button id="new-user-btn" class="primary-btn">＋ Novo usuário</button></div>
+      <div id="users-list" class="users-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="user-edit-modal" class="modal">
+    <form id="user-edit-form" class="modal-card user-edit-card">
+      <div class="modal-header"><div><span class="eyebrow">Gerenciar acesso</span><h2 id="user-edit-title">Novo usuário</h2></div><button type="button" id="close-user-edit" class="icon-btn">×</button></div>
+      <input type="hidden" id="user-edit-id">
+      <div class="form-grid">
+        <label class="span-2">Nome completo<input id="user-edit-name" type="text" required></label>
+        <label>Função<select id="user-edit-role"><option>Administrador</option><option>Tesouraria</option><option>Conselho Fiscal</option></select></label>
+        <label>Status<select id="user-edit-status"><option value="true">Ativo</option><option value="false">Inativo</option></select></label>
+        <label class="span-2">Senha<input id="user-edit-password" type="password" placeholder="Deixe em branco para manter a senha atual"></label>
+      </div>
+      <div class="modal-actions"><button type="button" id="cancel-user-edit" class="outline-btn">Cancelar</button><button type="submit" class="primary-btn">Salvar usuário</button></div>
+    </form>
+  </dialog>
+
+  <script src="./bootstrap.js"></script>
+  <script src="./pptxgen.bundle.js"></script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+/*
+  IBPV UI Core — camada de estabilidade visual
+  Objetivo: impedir que filtros de transição permaneçam presos na interface.
+  As animações usam opacidade, deslocamento e escala; blur fica restrito ao backdrop dos modais.
+*/
+
+:root {
+  --motion-fast: 180ms;
+  --motion-medium: 420ms;
+  --motion-page: 820ms;
+  --motion-ease: cubic-bezier(.22, 1, .36, 1);
+}
+
+/* Nenhuma tela ou conteúdo principal pode herdar blur persistente. */
+#app,
+#app .screen,
+#app .center-card,
+#app .page-shell,
+#app .workspace,
+#app .workspace-content,
+#app .app-layout {
+  filter: none !important;
+}
+
+/* Fluxo contínuo: profundidade sem desfoque. */
+#app.flow-mode .flow-section .center-card,
+#app.flow-mode .flow-section .page-shell {
+  will-change: transform, opacity;
+  filter: none !important;
+  transition: opacity 180ms linear;
+}
+
+/* Entrada dos elementos sem blur para evitar estado visual preso. */
+[data-animate] {
+  opacity: 0;
+  transform: translateY(24px) scale(.985);
+  filter: none !important;
+}
+
+.section-visible [data-animate] {
+  animation: ibpvStableStagger 680ms var(--motion-ease) forwards;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes ibpvStableStagger {
+  from { opacity: 0; transform: translateY(24px) scale(.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* A primeira seção nunca fica invisível por falha de inicialização. */
+[data-screen="welcome"].section-visible [data-animate],
+body.ui-ready [data-screen="welcome"] [data-animate] {
+  animation-name: ibpvStableStagger;
+}
+
+/* Entrada das áreas completas. */
+.screen.app-view.app-reveal {
+  filter: none !important;
+  animation: ibpvStableAppReveal 500ms var(--motion-ease) both !important;
+}
+
+@keyframes ibpvStableAppReveal {
+  from { opacity: 0; transform: translateY(18px) scale(.975); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.app-view.app-reveal .workspace-header > *,
+.app-view.app-reveal .report-config,
+.app-view.app-reveal .action-row,
+.app-view.app-reveal .dashboard-grid {
+  filter: none !important;
+}
+
+/* Modais: o conteúdo é nítido. Somente o plano de fundo recebe blur. */
+dialog,
+dialog[open],
+dialog .modal-card {
+  filter: none !important;
+}
+
+dialog {
+  opacity: 0;
+  transform: translateY(18px) scale(.96);
+}
+
+dialog[open] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: ibpvStableDialogIn 360ms var(--motion-ease) both !important;
+}
+
+@keyframes ibpvStableDialogIn {
+  from { opacity: 0; transform: translateY(18px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+dialog::backdrop {
+  background: rgba(43, 29, 23, .34);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+/* O overlay de transformação nunca desfoca o aplicativo. */
+body.morphing #app { filter: none !important; }
+
+/* Fallback: se animações forem interrompidas, o conteúdo volta ao estado normal. */
+body.motion-fallback [data-animate],
+body.motion-fallback .screen,
+body.motion-fallback .center-card,
+body.motion-fallback .page-shell {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-animate],
+  .section-visible [data-animate],
+  .screen.app-view.app-reveal,
+  dialog[open] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

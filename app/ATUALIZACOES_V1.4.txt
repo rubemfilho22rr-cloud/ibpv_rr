@@ -1,0 +1,45 @@
+RELATÓRIO FINANCEIRO IBPV — VERSÃO 1.4 (BASE ESTÁVEL)
+=====================================================
+
+OBJETIVO DESTA VERSÃO
+---------------------
+Esta versão reorganiza a camada visual e de animações para impedir que
+filtros, transições ou modais deixem a interface borrada ou travada.
+
+CORREÇÕES PRINCIPAIS
+--------------------
+- Removido o blur dos conteúdos principais e das transições entre telas.
+- Blur mantido apenas no fundo dos modais, nunca sobre o conteúdo do sistema.
+- Corrigido o risco de a primeira tela permanecer com filtro de entrada.
+- Adicionado mecanismo de segurança para limpar classes de transição presas.
+- Adicionado watchdog que restaura a interface caso uma animação seja interrompida.
+- Estado visual também é restaurado ao voltar para a aba ou recarregar a página.
+- Modais limpam automaticamente o estado transitório ao fechar ou cancelar.
+
+ANIMAÇÕES PRESERVADAS
+---------------------
+- Entrada sequencial de logo, títulos, textos e botões.
+- Navegação vertical contínua entre as etapas iniciais.
+- Movimento de profundidade por escala, opacidade e deslocamento.
+- Hover minimalista com brilho nos botões.
+- Entrada suave de dashboard e cartões.
+- Zoom moderno para modais, sem desfocar o conteúdo interno.
+
+FUNCIONALIDADES PRESERVADAS
+---------------------------
+- Relatórios e lançamentos.
+- Periodicidades e intervalos de meses.
+- Resumo financeiro.
+- Pré-visualização e impressão A4.
+- PowerPoint.
+- Usuários administrativos.
+- Anexos em IndexedDB.
+- Central de documentos.
+
+ARQUIVOS NOVOS
+--------------
+- styles/stable-ui.css
+- scripts/ui-core.js
+
+A nova camada é carregada por último para controlar conflitos de CSS antigos
+e garantir um comportamento previsível em futuras atualizações.

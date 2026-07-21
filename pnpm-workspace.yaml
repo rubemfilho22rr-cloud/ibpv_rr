@@ -1,0 +1,10 @@
+packages:
+  - .
+
+allowBuilds:
+  electron: set this to true or false
+  electron-winstaller: set this to true or false
+
+onlyBuiltDependencies:
+  - electron
+  - electron-winstaller
