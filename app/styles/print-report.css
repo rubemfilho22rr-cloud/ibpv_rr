@@ -1,11 +1,11 @@
-@page{size:A4 portrait;margin:8mm}
+@page{size:A4 portrait;margin:12mm}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#fff;color:#17233a;font-family:"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{width:auto;min-height:0}
 .report-document{width:194mm;max-width:194mm;margin:0 auto;background:#fff;overflow:visible}
 .report-header{display:grid;grid-template-columns:52mm 1fr;min-height:29mm;border-bottom:.25mm solid #dce5f0;break-inside:avoid}
 .report-brand{display:flex;align-items:center;justify-content:center;padding:4mm;background:linear-gradient(135deg,#302019,#704128)}
-.report-brand-logo{display:block;width:100%;max-width:43mm;max-height:22mm;object-fit:contain;filter:brightness(0) invert(1)}
+.report-brand-logo{display:block;width:140px;max-width:140px;max-height:90px;height:auto;object-fit:contain;filter:brightness(0) invert(1)}
 .report-heading{padding:4mm 6mm;display:flex;flex-direction:column;justify-content:center}
 .report-heading>span{font-size:7.5pt;letter-spacing:.13em;font-weight:800;color:#89502e}
 .report-heading h1{font-size:17pt;line-height:1.1;margin:1.8mm 0 1mm;color:#17233a}

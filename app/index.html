@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; object-src 'self' blob:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' blob:; base-uri 'self'; form-action 'self'" />
-  <title>Relatório Financeiro IBPV — v1.5.4 Online</title>
+  <title>Relatório Financeiro IBPV — v1.6.0 Online</title>
   <link rel="stylesheet" href="styles/main.css" />
   <link rel="stylesheet" href="styles/premium.css" />
   <link rel="stylesheet" href="styles/stable-ui.css" />
@@ -67,12 +67,12 @@
         <div class="profile-grid">
           <button class="profile-card member-card" data-go="member-identification">
             <span class="profile-icon">👥</span>
-            <h3>Membros</h3>
-            <p>Consulte relatórios já publicados, visualize períodos e baixe os PDFs disponíveis.</p>
+            <h3>Portal de Transparência</h3>
+            <p>Identifique-se pelo nome para consultar relatórios já publicados pela igreja.</p>
           </button>
           <button class="profile-card admin-card" data-go="restricted">
             <span class="profile-icon">🛡️</span>
-            <h3>Tesouraria / Conselho Fiscal</h3>
+            <h3>Área Administrativa</h3>
             <p>Crie, edite, revise e publique relatórios financeiros da igreja.</p>
           </button>
         </div>
@@ -82,12 +82,12 @@
 
     <section class="screen form-screen" data-screen="member-identification">
       <div class="center-card glass-card small-card">
-        <span class="eyebrow">Área dos membros</span>
-        <h2>Identificação</h2>
-        <p>Entre com a conta fornecida pela igreja para acessar o Portal de Transparência.</p>
+        <span class="eyebrow">Portal de Transparência</span>
+        <h2>Identifique-se</h2>
+        <p>Informe seu nome completo para consultar os relatórios publicados. Não é necessário criar uma conta.</p>
         <form id="member-form" class="stack-form">
-          <label>E-mail<input id="member-name" type="email" autocomplete="username" required placeholder="seuemail@exemplo.com" /></label>
-          <label>Senha<input id="member-password" type="password" autocomplete="current-password" required placeholder="Digite sua senha" /></label>
+          <label>Nome completo<input id="member-name" type="text" autocomplete="name" minlength="3" maxlength="120" required placeholder="Digite seu nome completo" /></label>
+          <p class="privacy-note">Seu nome será registrado no histórico de acesso ao Portal de Transparência.</p>
           <button class="primary-btn" type="submit">Continuar</button>
         </form>
         <button class="text-btn" data-go="profile">Voltar</button>
@@ -98,7 +98,7 @@
       <div class="page-shell">
         <header class="topbar simple-topbar">
           <div><span class="eyebrow">Portal de Transparência</span><h2 id="member-welcome">Bem-vindo</h2></div>
-          <button class="outline-btn" data-go="profile">Sair</button>
+          <button class="outline-btn" id="visitor-logout">Sair / trocar identificação</button>
         </header>
         <section class="filter-panel">
           <label>Ano<select id="portal-year"><option>2026</option><option>2025</option></select></label>
@@ -149,6 +149,7 @@
             <button class="nav-item" id="presentation-nav">▰ Apresentação</button>
             <button class="nav-item" data-admin-tab="published">◉ Publicados</button>
             <button class="nav-item" id="users-nav">♟ Usuários</button>
+            <button class="nav-item" id="activity-log-nav">◷ Histórico de atividades</button>
             <button class="nav-item" data-admin-tab="settings">⚙ Configurações</button>
           </nav>
           <div class="sidebar-footer"><button id="profile-menu-btn" class="profile-mini"><span id="logged-user">Usuário</span><small>Meu perfil</small></button><button id="logout-btn" class="text-btn light">Sair</button></div>
@@ -159,7 +160,7 @@
             <div>
               <span class="status-badge">Em elaboração</span>
               <h1 id="report-title">Relatório Financeiro — Janeiro de 2026</h1>
-              <p id="report-meta">Relatório salvo localmente neste computador.</p>
+              <p id="report-meta" aria-live="polite">Verificando sincronização com a nuvem...</p>
             </div>
             <div class="header-actions">
               <button id="save-report" class="outline-btn">Salvar</button>
@@ -190,7 +191,7 @@
               </div>
               <aside class="summary-column">
                 <section class="card summary-card"><h3>Resumo financeiro</h3><div class="summary-line"><span>Saldo anterior</span><strong id="summary-previous">R$ 0,00</strong></div><div class="summary-line green"><span>Total de entradas</span><strong id="summary-entries">R$ 0,00</strong></div><div class="summary-line red"><span>Total de despesas</span><strong id="summary-expenses">R$ 0,00</strong></div><div class="summary-total"><span>Saldo final</span><strong id="summary-final">R$ 0,00</strong></div></section>
-                <section class="card info-card"><h3>Informações do relatório</h3><p><span>Status</span><strong>Em elaboração</strong></p><p><span>Responsável</span><strong id="report-owner">—</strong></p><p><span>Última alteração</span><strong id="last-update">—</strong></p></section>
+                <section class="card info-card"><h3>Informações do relatório</h3><p><span>Status</span><strong>Em elaboração</strong></p><p><span>Responsável</span><strong id="report-owner">—</strong></p><p><span>Última alteração</span><strong id="last-update">—</strong></p><p><span>Armazenamento</span><strong id="cloud-storage-status">Verificando...</strong></p><p><span>Última sincronização</span><strong id="last-cloud-sync">—</strong></p></section>
               </aside>
             </section>
           </div>
@@ -275,6 +276,21 @@
       <div class="modal-header"><div><span class="eyebrow">Configurações</span><h2>Usuários administrativos</h2><p>Cadastre e edite os acessos da Tesouraria e do Conselho Fiscal.</p></div><button type="button" id="close-users" class="icon-btn">×</button></div>
       <div class="users-toolbar"><button id="new-user-btn" class="primary-btn">＋ Novo usuário</button></div>
       <div id="users-list" class="users-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="activity-log-modal" class="modal">
+    <div class="modal-card activity-log-modal-card">
+      <div class="modal-header"><div><span class="eyebrow">Auditoria</span><h2>Histórico de atividades</h2><p>Registro imutável de acessos e alterações realizadas no sistema.</p></div><button type="button" id="close-activity-log" class="icon-btn">×</button></div>
+      <section class="activity-log-filters">
+        <label>Data inicial<input id="activity-filter-from" type="date" /></label>
+        <label>Data final<input id="activity-filter-to" type="date" /></label>
+        <label>Tipo<select id="activity-filter-actor"><option value="">Todos</option><option value="authenticated">Usuários</option><option value="visitor">Visitantes</option><option value="system">Sistema</option></select></label>
+        <label>Ação<select id="activity-filter-action"><option value="">Todas as ações</option><option value="access">Acessos</option><option value="financial">Lançamentos</option><option value="report">Relatórios</option><option value="attachment">Anexos</option></select></label>
+        <label class="activity-search">Buscar<input id="activity-filter-search" type="search" placeholder="Nome, ação ou registro..." /></label>
+        <button type="button" id="refresh-activity-log" class="outline-btn">Atualizar</button>
+      </section>
+      <div id="activity-log-list" class="activity-log-list"></div>
     </div>
   </dialog>
 

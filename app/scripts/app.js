@@ -1,18 +1,23 @@
 import { backend } from './services/backend.js';
 
+const REPORT_LOGO_URL=new URL('../assets/logo-ibpv.png',import.meta.url).href;
 window.IBPV_LOGO_DATA='';
-fetch(new URL('../assets/logo-ibpv.png',import.meta.url)).then(response=>response.blob()).then(blob=>new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(blob);})).then(data=>{window.IBPV_LOGO_DATA=data;}).catch(console.error);
+fetch(REPORT_LOGO_URL).then(response=>{if(!response.ok)throw new Error(`Logo não encontrada (${response.status})`);return response.blob();}).then(blob=>new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(blob);})).then(data=>{window.IBPV_LOGO_DATA=data;}).catch(console.error);
 
 const screens=[...document.querySelectorAll('.screen')];
 const storageKey='ibpv-report-app-v1';
 const authKey='ibpv-admin-user-v1';
 const usersKey='ibpv-admin-users-v2';
 const publishedKey='ibpv-published-reports-v1';
+const visitorSessionKey='ibpv-visitor-session-v1';
 let state=loadState();
 let currentUser=null;
+let currentVisitor=null;
 let unsubscribeAuthState=()=>{};
 let authListenerRegistered=false;
 let authStateTask=Promise.resolve();
+let cachedActivityLogs=[];
+let activePreviewContext=null;
 
 let pendingTransactionAttachments=[];
 let originalTransactionAttachmentIds=new Set();
@@ -229,7 +234,9 @@ document.addEventListener('click',e=>{
   if(destination==='member-identification') setFlowRoute('member-identification');
   if(destination==='restricted'||destination==='admin-auth') setFlowRoute(destination);
 
-  const shouldMorph=target.classList.contains('profile-card') || ['admin-auth','member-portal','admin-dashboard'].includes(destination);
+  // As rotas do fluxo já possuem uma transição vertical. O antigo morph branco
+  // sobre os cartões era o painel vazio percebido entre a escolha e a identificação.
+  const shouldMorph=APP_SCREENS.includes(destination);
   if(shouldMorph && window.IBPVMotion){
     prepareScreen(destination);
     window.IBPVMotion.morphFrom(target,destination,()=>{
@@ -241,8 +248,36 @@ document.addEventListener('click',e=>{
 });
 
 function loadState(){try{return JSON.parse(localStorage.getItem(storageKey))||defaultState();}catch{return defaultState();}}
-function defaultState(){return{frequency:'Mensal',year:'2026',period:'Janeiro',previousBalance:6847.5,status:'Em elaboração',generalAttachments:[],transactions:[{id:crypto.randomUUID(),type:'entrada',date:'2026-01-05',description:'Dízimos',category:'Dízimos',method:'Depósito bancário',value:2500,notes:'',attachments:[]},{id:crypto.randomUUID(),type:'entrada',date:'2026-01-08',description:'Oferta de gratidão',category:'Ofertas',method:'Dinheiro',value:450,notes:'',attachments:[]},{id:crypto.randomUUID(),type:'saida',date:'2026-01-07',description:'Conta de energia',category:'Contas',method:'Transferência',value:480.2,notes:'',attachments:[]}]};}
+function defaultState(){return{frequency:'Mensal',year:'2026',period:'Janeiro',previousBalance:6847.5,status:'Em elaboração',remoteReportId:null,lastCloudSync:null,generalAttachments:[],transactions:[{id:crypto.randomUUID(),type:'entrada',date:'2026-01-05',description:'Dízimos',category:'Dízimos',method:'Depósito bancário',value:2500,notes:'',attachments:[]},{id:crypto.randomUUID(),type:'entrada',date:'2026-01-08',description:'Oferta de gratidão',category:'Ofertas',method:'Dinheiro',value:450,notes:'',attachments:[]},{id:crypto.randomUUID(),type:'saida',date:'2026-01-07',description:'Conta de energia',category:'Contas',method:'Transferência',value:480.2,notes:'',attachments:[]}]};}
 function saveState(){localStorage.setItem(storageKey,JSON.stringify(state));document.getElementById('last-update').textContent=new Date().toLocaleString('pt-BR');}
+function persistStateSilently(){localStorage.setItem(storageKey,JSON.stringify(state));}
+function setCloudStatus(kind,dateValue=null){
+  const meta=document.getElementById('report-meta');
+  const storage=document.getElementById('cloud-storage-status');
+  const lastSync=document.getElementById('last-cloud-sync');
+  if(!meta||!storage||!lastSync)return;
+  if(!backend.configured){meta.textContent='Modo local: Supabase não configurado.';storage.textContent='Somente neste computador';lastSync.textContent='—';return;}
+  if(kind==='saving'){meta.textContent='Salvando na nuvem...';storage.textContent='Sincronizando...';return;}
+  if(kind==='error'){meta.textContent='Não foi possível salvar na nuvem';storage.textContent='Erro de sincronização';return;}
+  if(kind==='offline'){meta.textContent='Sem conexão — salvamento pendente';storage.textContent='Pendente';return;}
+  if(kind==='pending'){meta.textContent='Alterações pendentes de salvamento na nuvem';storage.textContent='Pendente';return;}
+  const date=dateValue?new Date(dateValue):state.lastCloudSync?new Date(state.lastCloudSync):null;
+  if(date&&!Number.isNaN(date.getTime())){
+    meta.textContent=`Relatório salvo na nuvem às ${date.toLocaleTimeString('pt-BR')}`;
+    storage.textContent='Salvo na nuvem';
+    lastSync.textContent=date.toLocaleString('pt-BR');
+  }else{
+    meta.textContent='Conectado à nuvem. Nenhum salvamento confirmado nesta sessão.';
+    storage.textContent='Conectado';
+    lastSync.textContent='—';
+  }
+}
+function markCloudSaved(dateValue=new Date()){
+  const date=new Date(dateValue);
+  state.lastCloudSync=(Number.isNaN(date.getTime())?new Date():date).toISOString();
+  persistStateSilently();
+  setCloudStatus('saved',state.lastCloudSync);
+}
 function brl(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v)||0);}
 
 const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -308,12 +343,52 @@ function currentPeriodDates(){
 }
 async function syncEntries(){
   if(!backend.configured)return;
-  const {startDate,endDate}=currentPeriodDates();
-  state.transactions=await backend.entries(startDate,endDate);
-  renderAdmin();
+  setCloudStatus('saving');
+  try{
+    const {startDate,endDate}=currentPeriodDates();
+    state.transactions=await backend.entries(startDate,endDate);
+    setCloudStatus(state.lastCloudSync?'saved':'connected',state.lastCloudSync);
+    renderAdmin();
+  }catch(error){
+    setCloudStatus(navigator.onLine?'error':'offline');
+    throw error;
+  }
 }
 
 function isMemberProfile(user){return user?.role==='membro';}
+
+function readVisitorSession(){
+  try{return JSON.parse(sessionStorage.getItem(visitorSessionKey)||'null');}catch{return null;}
+}
+function storeVisitorSession(visitor){
+  currentVisitor=visitor;
+  sessionStorage.setItem(visitorSessionKey,JSON.stringify(visitor));
+}
+function clearVisitorSession(){
+  currentVisitor=null;
+  sessionStorage.removeItem(visitorSessionKey);
+}
+function normalizedVisitorName(value){return String(value||'').trim().replace(/\s+/g,' ');}
+function validVisitorName(value){return value.length>=3&&value.length<=120&&!/[<>]/.test(value);}
+
+async function restoreVisitorSession(){
+  if(!backend.configured)return false;
+  const stored=readVisitorSession();
+  if(!stored?.id||!stored?.clientToken)return false;
+  try{
+    const name=await backend.resumeVisitorSession(stored.id,stored.clientToken);
+    if(!name){clearVisitorSession();return false;}
+    storeVisitorSession({...stored,name});
+    document.getElementById('member-welcome').textContent=`Bem-vindo, ${name}`;
+    await renderPublishedReports();
+    showScreen('member-portal');
+    return true;
+  }catch(error){
+    console.error('Não foi possível restaurar a identificação do visitante:',error);
+    clearVisitorSession();
+    return false;
+  }
+}
 
 function showLanding(){
   currentUser=null;
@@ -327,6 +402,7 @@ function authenticatedAreaIsOpen(user){
 }
 
 async function openAuthenticatedArea(user,{sync=true,navigate=true}={}){
+  clearVisitorSession();
   currentUser=user;
   if(isMemberProfile(user)){
     document.getElementById('member-welcome').textContent=`Bem-vindo, ${user.name}`;
@@ -398,10 +474,12 @@ async function bootstrapApplication(){
     session=await backend.session();
     if(!session?.user){
       registerAuthStateListener();
+      if(await restoreVisitorSession())return;
       showLanding();
       return;
     }
     await restoreAuthenticatedSession(session,{sync:true,navigate:true});
+    backend.logActivity('session_restored',{description:'Sessão administrativa restaurada'}).catch(console.error);
     registerAuthStateListener();
     return;
   }catch(error){
@@ -436,13 +514,29 @@ function aggregateByMonth(items){
 const memberForm=document.getElementById('member-form');
 memberForm.addEventListener('submit',async e=>{
   e.preventDefault();
-  const email=document.getElementById('member-name').value.trim();
-  const password=document.getElementById('member-password').value;
+  const name=normalizedVisitorName(document.getElementById('member-name').value);
+  if(!validVisitorName(name)){alert('Informe um nome completo entre 3 e 120 caracteres.');return;}
+  if(!backend.configured){alert('O Portal de Transparência precisa da conexão com o Supabase.');return;}
+  const submit=memberForm.querySelector('[type="submit"]');
+  submit.disabled=true;
+  submit.textContent='Registrando acesso...';
   try{
-    currentUser=await backend.signIn(email,password);
-    document.getElementById('member-welcome').textContent=`Bem-vindo, ${currentUser.name}`;
+    const visitor=await backend.beginVisitorSession(name,crypto.randomUUID());
+    storeVisitorSession(visitor);
+    await backend.visitorActivity(visitor,'portal_opened',null,{source:'web'});
+    document.getElementById('member-welcome').textContent=`Bem-vindo, ${visitor.name}`;
+    await renderPublishedReports();
+    memberForm.reset();
     showScreen('member-portal');
-  }catch(error){console.error(error);alert(error.message||'Não foi possível entrar.');}
+  }catch(error){console.error(error);alert(error.message||'Não foi possível registrar seu acesso.');}
+  finally{submit.disabled=false;submit.textContent='Continuar';}
+});
+
+document.getElementById('visitor-logout').addEventListener('click',async()=>{
+  const visitor=currentVisitor||readVisitorSession();
+  if(visitor)await backend.visitorActivity(visitor,'visitor_exited').catch(console.error);
+  clearVisitorSession();
+  showScreen('profile');
 });
 
 function prepareAuth(){document.getElementById('auth-title').textContent='Login';document.getElementById('auth-description').textContent=backend.configured?'Informe seu e-mail e senha para acessar a área administrativa.':'Supabase não configurado; o modo local de compatibilidade está ativo.';document.getElementById('activation-group').style.display='none';document.getElementById('auth-submit').textContent='Entrar';document.getElementById('admin-name').value='';}
@@ -458,6 +552,8 @@ document.getElementById('auth-form').addEventListener('submit',async e=>{
         await backend.signOut();currentUser=null;
         throw new Error('Este perfil não possui acesso à área administrativa.');
       }
+      clearVisitorSession();
+      backend.logActivity('login',{description:'Login administrativo realizado'}).catch(console.error);
       await syncEntries();
     }else{
       const users=getUsers();
@@ -469,7 +565,10 @@ document.getElementById('auth-form').addEventListener('submit',async e=>{
 });
 
 document.getElementById('logout-btn').addEventListener('click',async()=>{
-  try{await backend.signOut();}
+  try{
+    if(backend.configured)await backend.logActivity('logout',{description:'Logout administrativo realizado'}).catch(console.error);
+    await backend.signOut();
+  }
   catch(error){console.error(error);}
   finally{
     showLanding();
@@ -487,34 +586,118 @@ document.getElementById('transaction-form').addEventListener('submit',async e=>{
   e.preventDefault();
   const item={id:document.getElementById('editing-id').value||null,type:document.getElementById('transaction-type').value,date:document.getElementById('transaction-date').value,description:document.getElementById('transaction-description').value.trim(),category:document.getElementById('transaction-category').value.trim(),method:document.getElementById('transaction-method').value.trim(),value:Number(document.getElementById('transaction-value').value),notes:document.getElementById('transaction-notes').value.trim(),attachments:[...pendingTransactionAttachments]};
   if(!dateBelongsToCurrentPeriod(item.date)){alert(`A data do lançamento deve estar dentro do período ${formatReportPeriod()}.`);return;}
+  if(backend.configured)setCloudStatus('saving');
   try{
     if(backend.configured){
-      item.id=await backend.saveEntry(item,currentUser.id);
+      const previousItem=item.id?state.transactions.find(transaction=>transaction.id===item.id):null;
+      const savedEntry=await backend.saveEntry(item,currentUser.id);
+      item.id=savedEntry.id;
+      const retainedIds=new Set(pendingTransactionAttachments.map(file=>file.id));
+      for(const removed of (previousItem?.attachments||[]).filter(file=>file.storagePath&&!retainedIds.has(file.id))){
+        await backend.deleteAttachment(removed);
+      }
       for(const meta of pendingTransactionAttachments.filter(file=>!file.storagePath)){
         const record=await getAttachmentFile(meta.id);
         if(record?.blob){await backend.uploadAttachment({file:new File([record.blob],record.name,{type:record.type}),entryId:item.id,userId:currentUser.id});await removeAttachmentFile(meta.id);}
       }
       await syncEntries();
-      window.IBPVMotion?.toast(`Salvo na nuvem às ${new Date().toLocaleTimeString('pt-BR')}`);
+      const savedAt=new Date(savedEntry.updatedAt||new Date());markCloudSaved(savedAt);
+      window.IBPVMotion?.toast(`Salvo na nuvem às ${savedAt.toLocaleTimeString('pt-BR')}`);
     }
     else{item.id=item.id||crypto.randomUUID();const idx=state.transactions.findIndex(t=>t.id===item.id);if(idx>=0)state.transactions[idx]=item;else state.transactions.push(item);saveState();}
     pendingTransactionAttachments=[];originalTransactionAttachmentIds=new Set();modal.close();renderAdmin();
-  }catch(error){console.error(error);alert(error.message||'Não foi possível salvar o lançamento.');}
+  }catch(error){
+    console.error(error);
+    if(backend.configured){
+      setCloudStatus(navigator.onLine?'error':'offline');
+      backend.logActivity('save_failed',{tableName:'financial_entries',recordId:item.id,description:'Falha ao salvar lançamento',result:'failure',metadata:{type:item.type}}).catch(console.error);
+    }
+    alert(error.message||'Não foi possível salvar o lançamento.');
+  }
 });
 
-function renderAdmin(){ensureAttachmentState();normalizePeriodState();const user=getFallbackUser();document.getElementById('logged-user').textContent=user?.name||'Usuário';document.getElementById('report-owner').textContent=user?.name||'—';document.getElementById('users-nav').hidden=backend.configured&&user?.role!=='administrador';document.getElementById('report-frequency').value=state.frequency;document.getElementById('report-year').value=state.year;populatePeriodSelect();document.getElementById('previous-balance').value=state.previousBalance;document.getElementById('report-title').textContent=`Relatório Financeiro — ${formatReportPeriod()}`;renderTransactions();updateSummary();}
+function renderAdmin(){ensureAttachmentState();normalizePeriodState();const user=getFallbackUser();document.getElementById('logged-user').textContent=user?.name||'Usuário';document.getElementById('report-owner').textContent=user?.name||'—';document.getElementById('users-nav').hidden=backend.configured&&user?.role!=='administrador';document.getElementById('activity-log-nav').hidden=backend.configured&&!['administrador','conselho'].includes(user?.role);document.getElementById('report-frequency').value=state.frequency;document.getElementById('report-year').value=state.year;populatePeriodSelect();document.getElementById('previous-balance').value=state.previousBalance;document.getElementById('report-title').textContent=`Relatório Financeiro — ${formatReportPeriod()}`;renderTransactions();updateSummary();}
 function renderTransactions(){const q=document.getElementById('search-transaction').value.toLowerCase();const transactions=getReportTransactions();renderList('entries-list',transactions.filter(t=>t.type==='entrada'&&matches(t,q)));renderList('expenses-list',transactions.filter(t=>t.type==='saida'&&matches(t,q)));}
 function matches(t,q){return !q||[t.description,t.category,t.method].some(v=>(v||'').toLowerCase().includes(q));}
 function renderList(id,items){const el=document.getElementById(id);if(!items.length){el.innerHTML='<div class="empty-state">Nenhum lançamento encontrado.</div>';return;}el.innerHTML='<div class="transaction-row header"><span>Data</span><span>Descrição</span><span>Categoria</span><span>Forma</span><span>Valor</span><span>Ações</span></div>'+items.map(t=>{const attachmentCount=(t.attachments||[]).length;return `<div class="transaction-row"><span>${new Date(t.date+'T00:00:00').toLocaleDateString('pt-BR')}</span><span><strong>${escapeHtml(t.description)}</strong>${attachmentCount?`<button class="attachment-badge" data-open-transaction-attachments="${t.id}" title="Abrir anexos">📎 ${attachmentCount}</button>`:''}</span><span>${escapeHtml(t.category||'—')}</span><span>${escapeHtml(t.method||'—')}</span><span class="amount">${brl(t.value)}</span><span class="actions"><button class="mini-btn" data-edit="${t.id}" title="Editar">✎</button><button class="mini-btn delete" data-delete="${t.id}" title="Excluir lançamento" aria-label="Excluir lançamento"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 11H7.7L7 9Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/></svg></button></span></div>`;}).join('');}
 function escapeHtml(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
-document.addEventListener('click',async e=>{const edit=e.target.closest('[data-edit]');if(edit){const item=state.transactions.find(t=>t.id===edit.dataset.edit);openTransactionModal(item.type,item);}const attachmentOpen=e.target.closest('[data-open-transaction-attachments]');if(attachmentOpen){const item=state.transactions.find(t=>t.id===attachmentOpen.dataset.openTransactionAttachments);if(item)openTransactionModal(item.type,item);}const del=e.target.closest('[data-delete]');if(del&&confirm('Deseja excluir este lançamento e todos os anexos vinculados?')){try{if(backend.configured){await backend.deleteEntry(del.dataset.delete);await syncEntries();}else{const item=state.transactions.find(t=>t.id===del.dataset.delete);for(const meta of item?.attachments||[])await removeAttachmentFile(meta.id).catch(()=>{});state.transactions=state.transactions.filter(t=>t.id!==del.dataset.delete);saveState();renderAdmin();}}catch(error){console.error(error);alert(error.message||'Não foi possível excluir o lançamento.');}}});
+document.addEventListener('click',async e=>{
+  const edit=e.target.closest('[data-edit]');
+  if(edit){const item=state.transactions.find(t=>t.id===edit.dataset.edit);openTransactionModal(item.type,item);}
+  const attachmentOpen=e.target.closest('[data-open-transaction-attachments]');
+  if(attachmentOpen){const item=state.transactions.find(t=>t.id===attachmentOpen.dataset.openTransactionAttachments);if(item)openTransactionModal(item.type,item);}
+  const del=e.target.closest('[data-delete]');
+  if(del&&confirm('Deseja excluir este lançamento e todos os anexos vinculados?')){
+    if(backend.configured)setCloudStatus('saving');
+    try{
+      if(backend.configured){await backend.deleteEntry(del.dataset.delete);await syncEntries();markCloudSaved();}
+      else{
+        const item=state.transactions.find(t=>t.id===del.dataset.delete);
+        for(const meta of item?.attachments||[])await removeAttachmentFile(meta.id).catch(()=>{});
+        state.transactions=state.transactions.filter(t=>t.id!==del.dataset.delete);saveState();renderAdmin();
+      }
+    }catch(error){
+      console.error(error);
+      if(backend.configured)setCloudStatus(navigator.onLine?'error':'offline');
+      alert(error.message||'Não foi possível excluir o lançamento.');
+    }
+  }
+});
 function updateSummary(){const transactions=getReportTransactions();const entries=transactions.filter(t=>t.type==='entrada').reduce((s,t)=>s+t.value,0);const expenses=transactions.filter(t=>t.type==='saida').reduce((s,t)=>s+t.value,0);document.getElementById('summary-previous').textContent=brl(state.previousBalance);document.getElementById('summary-entries').textContent=brl(entries);document.getElementById('summary-expenses').textContent=brl(expenses);document.getElementById('summary-final').textContent=brl(state.previousBalance+entries-expenses);}
-document.getElementById('report-frequency').addEventListener('change',async()=>{state.frequency=document.getElementById('report-frequency').value;state.period=getPeriodOptions(state.frequency)[0].value;saveState();renderAdmin();await syncEntries().catch(console.error);});
-document.getElementById('report-year').addEventListener('change',async()=>{state.year=document.getElementById('report-year').value;saveState();renderAdmin();await syncEntries().catch(console.error);});
-document.getElementById('report-period').addEventListener('change',async()=>{state.period=document.getElementById('report-period').value;saveState();renderAdmin();await syncEntries().catch(console.error);});
-document.getElementById('previous-balance').addEventListener('change',()=>{state.previousBalance=Number(document.getElementById('previous-balance').value)||0;saveState();renderAdmin();});
+function currentReportPayload(){
+  const items=getReportTransactions();
+  const totalIncome=items.filter(t=>t.type==='entrada').reduce((sum,t)=>sum+t.value,0);
+  const totalExpense=items.filter(t=>t.type==='saida').reduce((sum,t)=>sum+t.value,0);
+  const {startDate,endDate}=currentPeriodDates();
+  const periodTypes={Mensal:'mensal',Bimestral:'bimestral',Trimestral:'trimestral',Semestral:'semestral',Anual:'anual'};
+  const snapshot={
+    frequency:state.frequency,
+    year:state.year,
+    period:state.period,
+    previousBalance:state.previousBalance,
+    status:state.status,
+    responsibleName:currentUser?.name||'Tesouraria',
+    transactions:items.map(item=>({
+      id:item.id,type:item.type,date:item.date,description:item.description,
+      category:item.category,method:item.method,value:item.value,notes:item.notes||''
+    }))
+  };
+  return {
+    id:state.remoteReportId||null,
+    title:`Relatório Financeiro — ${formatReportPeriod()}`,
+    periodType:periodTypes[state.frequency]||'personalizado',
+    startDate,endDate,totalIncome,totalExpense,
+    openingBalance:state.previousBalance,
+    closingBalance:state.previousBalance+totalIncome-totalExpense,
+    snapshot
+  };
+}
+async function recordPeriodChange(field,value){
+  if(!backend.configured||!currentUser)return;
+  backend.logActivity('period_changed',{tableName:'reports',recordId:state.remoteReportId,description:'Configuração do período alterada',metadata:{field,value}}).catch(console.error);
+}
+document.getElementById('report-frequency').addEventListener('change',async()=>{state.frequency=document.getElementById('report-frequency').value;state.period=getPeriodOptions(state.frequency)[0].value;state.remoteReportId=null;saveState();renderAdmin();recordPeriodChange('frequency',state.frequency);try{await syncEntries();setCloudStatus('pending');}catch(error){console.error(error);}});
+document.getElementById('report-year').addEventListener('change',async()=>{state.year=document.getElementById('report-year').value;state.remoteReportId=null;saveState();renderAdmin();recordPeriodChange('year',state.year);try{await syncEntries();setCloudStatus('pending');}catch(error){console.error(error);}});
+document.getElementById('report-period').addEventListener('change',async()=>{state.period=document.getElementById('report-period').value;state.remoteReportId=null;saveState();renderAdmin();recordPeriodChange('period',state.period);try{await syncEntries();setCloudStatus('pending');}catch(error){console.error(error);}});
+document.getElementById('previous-balance').addEventListener('change',()=>{state.previousBalance=Number(document.getElementById('previous-balance').value)||0;saveState();setCloudStatus('pending');renderAdmin();recordPeriodChange('previous_balance',state.previousBalance);});
 document.getElementById('search-transaction').addEventListener('input',renderTransactions);
-document.getElementById('save-report').onclick=()=>{saveState();window.IBPVMotion?.toast('Relatório salvo',backend.configured?'Os lançamentos estão sincronizados com o Supabase.':'Os dados foram armazenados neste computador.');};
+document.getElementById('save-report').onclick=async()=>{
+  saveState();
+  if(!backend.configured){window.IBPVMotion?.toast('Relatório salvo','Os dados foram armazenados neste computador.');setCloudStatus('saved');return;}
+  setCloudStatus('saving');
+  try{
+    const saved=await backend.saveReportDraft(currentReportPayload(),currentUser.id);
+    state.remoteReportId=saved.id;
+    state.status='Em elaboração';
+    markCloudSaved(saved.updated_at||new Date());
+    window.IBPVMotion?.toast(`Salvo na nuvem às ${new Date(state.lastCloudSync).toLocaleTimeString('pt-BR')}`);
+  }catch(error){
+    console.error(error);
+    setCloudStatus(navigator.onLine?'error':'offline');
+    backend.logActivity('save_failed',{tableName:'reports',recordId:state.remoteReportId,description:'Falha ao salvar relatório',result:'failure'}).catch(console.error);
+    alert(error.message||'Não foi possível salvar o relatório na nuvem.');
+  }
+};
 
 
 const transactionFiles=document.getElementById('transaction-files');
@@ -571,7 +754,7 @@ function previewRows(items, type){
     <td class="report-value">${brl(t.value)}</td>
   </tr>`).join('');
 }
-function buildPreview(){
+function buildPreview(context=null){
   const reportTransactions=getReportTransactions();
   const entries=reportTransactions.filter(t=>t.type==='entrada');
   const expenses=reportTransactions.filter(t=>t.type==='saida');
@@ -579,12 +762,13 @@ function buildPreview(){
   const totalOut=expenses.reduce((s,t)=>s+t.value,0);
   const finalBalance=state.previousBalance+totalIn-totalOut;
   const user=getFallbackUser();
+  activePreviewContext=context||{recordId:state.remoteReportId,period:formatReportPeriod()};
   const generatedAt=new Date().toLocaleString('pt-BR');
   document.getElementById('preview-content').innerHTML=`
     <div class="report-document">
       <header class="report-header">
         <div class="report-brand">
-          <img class="report-brand-logo" src="assets/logo-ibpv.png" alt="Igreja Batista Palavra da Vida" />
+          <img class="report-brand-logo" src="${REPORT_LOGO_URL}" alt="Igreja Batista Palavra da Vida" />
         </div>
         <div class="report-heading">
           <span>RELATÓRIO FINANCEIRO</span>
@@ -597,7 +781,7 @@ function buildPreview(){
         <div><span>Saldo anterior</span><strong>${brl(state.previousBalance)}</strong></div>
         <div><span>Periodicidade</span><strong>${escapeHtml(state.frequency)}</strong></div>
         <div><span>Período</span><strong>${escapeHtml(formatReportPeriod())}</strong></div>
-        <div><span>Responsável</span><strong>${escapeHtml(user?.name||'Tesouraria')}</strong></div>
+        <div><span>Responsável</span><strong>${escapeHtml(state.responsibleName||user?.name||'Tesouraria')}</strong></div>
         <div><span>Gerado em</span><strong>${generatedAt}</strong></div>
       </section>
 
@@ -636,13 +820,18 @@ function buildPreview(){
     </div>`;
   previewModal.showModal();
 }
-document.getElementById('preview-report').onclick=buildPreview;document.getElementById('close-preview').onclick=()=>previewModal.close();
-function waitForReportImages(report){
+document.getElementById('preview-report').onclick=()=>{buildPreview();if(backend.configured&&currentUser)backend.logActivity('report_previewed',{tableName:'reports',recordId:state.remoteReportId,description:'Pré-visualização do relatório aberta',metadata:{period:formatReportPeriod()}}).catch(console.error);};
+document.getElementById('close-preview').onclick=()=>{previewModal.close();activePreviewContext=null;};
+function waitForReportImages(report,timeoutMs=5000){
   return Promise.all([...report.querySelectorAll('img')].map(image=>{
-    if(image.complete&&image.naturalWidth>0)return Promise.resolve();
+    // complete também cobre uma imagem que já falhou antes de registrarmos os eventos.
+    if(image.complete)return Promise.resolve();
     return new Promise(resolve=>{
-      image.addEventListener('load',resolve,{once:true});
-      image.addEventListener('error',resolve,{once:true});
+      let finished=false;
+      const finish=()=>{if(finished)return;finished=true;clearTimeout(timer);resolve();};
+      const timer=setTimeout(finish,timeoutMs);
+      image.addEventListener('load',finish,{once:true});
+      image.addEventListener('error',finish,{once:true});
     });
   }));
 }
@@ -656,8 +845,12 @@ async function printReport(){
   if(!source)return;
   document.body.classList.add('is-printing-report');
   try{
-    if(document.fonts?.ready)await document.fonts.ready;
-    await waitForReportImages(source);
+    const timeout=new Promise(resolve=>setTimeout(resolve,5000));
+    if(document.fonts?.ready)await Promise.race([document.fonts.ready,timeout]).catch(error=>console.warn('Fontes não ficaram prontas antes da impressão:',error));
+    await waitForReportImages(source,5000);
+    const previewContext=activePreviewContext||{recordId:state.remoteReportId,period:formatReportPeriod()};
+    if(currentVisitor)await backend.visitorActivity(currentVisitor,'print_requested',previewContext.recordId,{period:previewContext.period}).catch(console.error);
+    else if(currentUser&&backend.configured)await backend.logActivity('print_requested',{tableName:'reports',recordId:previewContext.recordId,description:'Impressão ou PDF solicitado',metadata:{period:previewContext.period}}).catch(console.error);
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     window.print();
   }finally{
@@ -667,26 +860,55 @@ async function printReport(){
 document.getElementById('print-report').onclick=printReport;
 document.getElementById('publish-report').onclick=async()=>{
   saveState();
+  if(backend.configured)setCloudStatus('saving');
   try{
     if(backend.configured){
-      const items=getReportTransactions();const totalIncome=items.filter(t=>t.type==='entrada').reduce((sum,t)=>sum+t.value,0);const totalExpense=items.filter(t=>t.type==='saida').reduce((sum,t)=>sum+t.value,0);const {startDate,endDate}=currentPeriodDates();
-      const periodTypes={Mensal:'mensal',Bimestral:'bimestral',Trimestral:'trimestral',Semestral:'semestral',Anual:'anual'};
-      await backend.publishReport({title:`Relatório Financeiro — ${formatReportPeriod()}`,periodType:periodTypes[state.frequency]||'personalizado',startDate,endDate,totalIncome,totalExpense,openingBalance:state.previousBalance,closingBalance:state.previousBalance+totalIncome-totalExpense},currentUser.id);
+      const published=await backend.publishReport(currentReportPayload(),currentUser.id);
+      state.remoteReportId=published.id;
+      state.status='Publicado';
+      markCloudSaved(published.updated_at||published.published_at||new Date());
     }else{
       const list=JSON.parse(localStorage.getItem(publishedKey)||'[]');const report={id:crypto.randomUUID(),title:`Relatório Financeiro — ${formatReportPeriod()}`,year:state.year,frequency:state.frequency,period:state.period,publishedAt:new Date().toLocaleDateString('pt-BR'),snapshot:structuredClone(state)};list.unshift(report);localStorage.setItem(publishedKey,JSON.stringify(list));
     }
-    alert('Relatório publicado para a área dos membros.');
-  }catch(error){console.error(error);alert(error.message||'Não foi possível publicar o relatório.');}
+    alert('Relatório publicado no Portal de Transparência.');
+  }catch(error){console.error(error);if(backend.configured)setCloudStatus(navigator.onLine?'error':'offline');alert(error.message||'Não foi possível publicar o relatório.');}
 };
 async function renderPublishedReports(){
   const grid=document.getElementById('published-reports');
   try{
     const list=backend.configured?await backend.publishedReports():JSON.parse(localStorage.getItem(publishedKey)||'[]');
     if(!list.length){grid.innerHTML='<div class="report-card"><span class="pdf-icon">📄</span><h3>Nenhum relatório publicado</h3><p>Os documentos publicados pela Tesouraria aparecerão aqui.</p></div>';return;}
-    grid.innerHTML=list.map(r=>`<article class="report-card"><span class="pdf-icon">📄</span><h3>${escapeHtml(r.title)}</h3><p>${escapeHtml(r.period_type||r.frequency)} • Publicado em ${new Date(r.published_at||r.publishedAt).toLocaleDateString('pt-BR')}</p>${r.snapshot?`<button class="primary-btn" data-open-published="${r.id}">Visualizar relatório</button>`:''}</article>`).join('');
+    grid.innerHTML=list.map(r=>{
+      const canView=Boolean(r.snapshot||r.has_snapshot);
+      const pdfPath=r.pdf_storage_path||'';
+      return `<article class="report-card"><span class="pdf-icon">📄</span><h3>${escapeHtml(r.title)}</h3><p>${escapeHtml(r.period_type||r.frequency)} • Publicado em ${new Date(r.published_at||r.publishedAt).toLocaleDateString('pt-BR')}</p><div class="report-card-actions">${canView?`<button class="primary-btn" data-open-published="${r.id}">Visualizar relatório</button>`:''}${pdfPath?`<button class="outline-btn" data-download-published="${r.id}" data-pdf-path="${escapeHtml(pdfPath)}">Baixar PDF</button>`:''}</div>${!canView&&!pdfPath?'<small>Este relatório antigo possui apenas o resumo publicado.</small>':''}</article>`;
+    }).join('');
   }catch(error){console.error(error);grid.innerHTML='<div class="report-card"><h3>Não foi possível carregar os relatórios</h3><p>Verifique sua conexão e tente novamente.</p></div>';}
 }
-document.addEventListener('click',e=>{const open=e.target.closest('[data-open-published]');if(!open)return;const report=JSON.parse(localStorage.getItem(publishedKey)||'[]').find(r=>r.id===open.dataset.openPublished);if(!report)return;const old=state;state=report.snapshot;buildPreview();state=old;});
+document.addEventListener('click',async e=>{
+  const open=e.target.closest('[data-open-published]');
+  if(open){
+    try{
+      const report=backend.configured
+        ?await backend.publishedReport(open.dataset.openPublished,currentVisitor||readVisitorSession())
+        :JSON.parse(localStorage.getItem(publishedKey)||'[]').find(r=>r.id===open.dataset.openPublished);
+      const snapshot=report?.snapshot;
+      if(!snapshot){alert('A pré-visualização detalhada não está disponível para este relatório antigo.');return;}
+      const old=state;
+      state={...defaultState(),...snapshot,transactions:Array.isArray(snapshot.transactions)?snapshot.transactions:[]};
+      buildPreview({recordId:report.id||open.dataset.openPublished,period:`${snapshot.period||report.title}${snapshot.year?` de ${snapshot.year}`:''}`});
+      state=old;
+    }catch(error){console.error(error);alert(error.message||'Não foi possível abrir o relatório publicado.');}
+  }
+  const download=e.target.closest('[data-download-published]');
+  if(download){
+    try{
+      const blob=await backend.downloadPublishedReport(download.dataset.pdfPath);
+      const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`Relatorio-IBPV-${download.dataset.downloadPublished}.pdf`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+      await backend.visitorActivity(currentVisitor||readVisitorSession(),'pdf_downloaded',download.dataset.downloadPublished).catch(console.error);
+    }catch(error){console.error(error);alert(error.message||'Não foi possível baixar o PDF.');}
+  }
+});
 
 // Apresentação PowerPoint dinâmica para a assembleia
 
@@ -702,6 +924,64 @@ document.getElementById('close-user-edit').onclick=()=>userEditModal.close();
 document.getElementById('cancel-user-edit').onclick=()=>userEditModal.close();
 document.getElementById('user-edit-form').addEventListener('submit',e=>{e.preventDefault();const users=getUsers();const id=document.getElementById('user-edit-id').value;const name=document.getElementById('user-edit-name').value.trim();const password=document.getElementById('user-edit-password').value;const role=document.getElementById('user-edit-role').value;const active=document.getElementById('user-edit-status').value==='true';if(!name){return;}let user=users.find(u=>u.id===id);if(user){user.name=name;user.role=role;user.active=active;if(password){if(password.length<4){alert('A senha deve ter pelo menos 4 caracteres.');return;}user.password=password;}if(currentUser?.id===user.id)currentUser=user;}else{if(password.length<4){alert('Informe uma senha com pelo menos 4 caracteres.');return;}user={id:crypto.randomUUID(),name,password,role,active,lastAccess:null};users.push(user);}saveUsers(users);userEditModal.close();renderUsers();renderAdmin();});
 document.addEventListener('click',e=>{const edit=e.target.closest('[data-user-edit]');if(edit){const u=getUsers().find(x=>x.id===edit.dataset.userEdit);if(u)openUserEditor(u);}const del=e.target.closest('[data-user-delete]');if(del){const users=getUsers();if(users.length<=1){alert('É necessário manter pelo menos um usuário cadastrado.');return;}const u=users.find(x=>x.id===del.dataset.userDelete);if(u&&confirm(`Deseja excluir o usuário ${u.name}?`)){saveUsers(users.filter(x=>x.id!==u.id));renderUsers();}}});
+
+const activityLogModal=document.getElementById('activity-log-modal');
+const ACTIVITY_LABELS={
+  login:'Login realizado',logout:'Logout realizado',session_restored:'Sessão restaurada',
+  visitor_identified:'Visitante identificado',portal_opened:'Portal acessado',visitor_exited:'Visitante saiu',
+  income_created:'Entrada adicionada',income_updated:'Entrada editada',income_deleted:'Entrada excluída',
+  expense_created:'Despesa adicionada',expense_updated:'Despesa editada',expense_deleted:'Despesa excluída',
+  report_saved:'Relatório salvo',report_published:'Relatório publicado',report_archived:'Relatório arquivado',report_deleted:'Relatório excluído',
+  report_viewed:'Relatório visualizado',report_previewed:'Pré-visualização aberta',period_changed:'Período alterado',
+  attachment_uploaded:'Anexo enviado',attachment_updated:'Anexo atualizado',attachment_deleted:'Anexo excluído',
+  print_requested:'Impressão/PDF solicitada',pdf_downloaded:'PDF baixado',save_failed:'Falha de salvamento',
+  insert:'Registro adicionado',update:'Registro atualizado',delete:'Registro excluído'
+};
+function activityCategory(action){
+  if(/visitor|portal|login|logout|session/.test(action))return'access';
+  if(/income|expense/.test(action))return'financial';
+  if(/attachment/.test(action))return'attachment';
+  if(/report|period|print|pdf/.test(action))return'report';
+  return'other';
+}
+function activityDetails(log){
+  const blocks=[];
+  if(log.old_data)blocks.push(`<section><strong>Antes</strong><pre>${escapeHtml(JSON.stringify(log.old_data,null,2))}</pre></section>`);
+  if(log.new_data)blocks.push(`<section><strong>Depois</strong><pre>${escapeHtml(JSON.stringify(log.new_data,null,2))}</pre></section>`);
+  if(log.metadata&&Object.keys(log.metadata).length)blocks.push(`<section><strong>Informações</strong><pre>${escapeHtml(JSON.stringify(log.metadata,null,2))}</pre></section>`);
+  return blocks.length?`<details><summary>Ver detalhes</summary><div class="activity-detail-grid">${blocks.join('')}</div></details>`:'';
+}
+function renderActivityLogs(){
+  const from=document.getElementById('activity-filter-from').value;
+  const to=document.getElementById('activity-filter-to').value;
+  const actor=document.getElementById('activity-filter-actor').value;
+  const actionGroup=document.getElementById('activity-filter-action').value;
+  const search=document.getElementById('activity-filter-search').value.trim().toLowerCase();
+  const filtered=cachedActivityLogs.filter(log=>{
+    const day=String(log.created_at||'').slice(0,10);
+    if(from&&day<from)return false;if(to&&day>to)return false;
+    if(actor&&log.actor_type!==actor)return false;
+    if(actionGroup&&activityCategory(log.action)!==actionGroup)return false;
+    const haystack=[log.actor_name,log.actor_role,log.action,log.table_name,log.record_id,log.description].filter(Boolean).join(' ').toLowerCase();
+    return !search||haystack.includes(search);
+  });
+  const list=document.getElementById('activity-log-list');
+  if(!filtered.length){list.innerHTML='<div class="empty-state">Nenhuma atividade encontrada para os filtros selecionados.</div>';return;}
+  list.innerHTML=filtered.map(log=>`<article class="activity-log-item ${log.result==='failure'?'failed':''}"><div class="activity-log-time"><strong>${new Date(log.created_at).toLocaleDateString('pt-BR')}</strong><span>${new Date(log.created_at).toLocaleTimeString('pt-BR')}</span></div><div class="activity-log-main"><div class="activity-log-heading"><strong>${escapeHtml(ACTIVITY_LABELS[log.action]||log.action)}</strong><span class="activity-result ${log.result==='failure'?'failure':'success'}">${log.result==='failure'?'Falha':'Sucesso'}</span></div><p>${escapeHtml(log.description&&log.description!==log.action?log.description:(ACTIVITY_LABELS[log.action]||log.action))}</p>${activityDetails(log)}</div><div class="activity-log-actor"><strong>${escapeHtml(log.actor_name||'Sistema')}</strong><span>${escapeHtml(log.actor_role||({visitor:'Visitante',system:'Sistema'}[log.actor_type]||'Usuário'))}</span><small>${escapeHtml(log.table_name||'aplicação')}${log.record_id?` • ${escapeHtml(log.record_id)}`:''}</small></div></article>`).join('');
+}
+async function loadActivityLogs(){
+  const list=document.getElementById('activity-log-list');
+  list.innerHTML='<div class="empty-state">Carregando histórico...</div>';
+  try{cachedActivityLogs=await backend.activityLogs();renderActivityLogs();}
+  catch(error){console.error(error);list.innerHTML='<div class="empty-state">Não foi possível carregar o histórico. Confirme se a migração do Supabase foi executada.</div>';}
+}
+document.getElementById('activity-log-nav').addEventListener('click',()=>{
+  if(backend.configured&&!['administrador','conselho'].includes(currentUser?.role)){alert('Seu perfil não possui permissão para visualizar o histórico.');return;}
+  activityLogModal.showModal();loadActivityLogs();
+});
+document.getElementById('close-activity-log').addEventListener('click',()=>activityLogModal.close());
+document.getElementById('refresh-activity-log').addEventListener('click',loadActivityLogs);
+['activity-filter-from','activity-filter-to','activity-filter-actor','activity-filter-action','activity-filter-search'].forEach(id=>document.getElementById(id).addEventListener(id==='activity-filter-search'?'input':'change',renderActivityLogs));
 
 const presentationModal=document.getElementById('presentation-modal');
 function openPresentationModal(){presentationModal.showModal();}

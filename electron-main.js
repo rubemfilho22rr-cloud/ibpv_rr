@@ -138,6 +138,10 @@ function createWindow(appUrl) {
     win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
       smokeEvents.push({ event: 'did-fail-load', errorCode, errorDescription, validatedURL });
     });
+    win.webContents.on('render-process-gone', (_event, details) => {
+      smokeEvents.push({ event: 'render-process-gone', details });
+      fs.writeFile(`${process.env.IBPV_SMOKE_SCREENSHOT}.json`, JSON.stringify(smokeEvents, null, 2));
+    });
     win.webContents.once('did-finish-load', () => {
       smokeEvents.push({ event: 'did-finish-load' });
       setTimeout(() => finishSmoke('did-finish-load'), 1800);

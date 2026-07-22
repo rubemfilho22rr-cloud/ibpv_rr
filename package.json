@@ -1,6 +1,6 @@
 {
   "name": "relatorio-financeiro-ibpv",
-  "version": "1.5.4",
+  "version": "1.6.0",
   "description": "Relatório Financeiro da Igreja Batista Palavra da Vida",
   "main": "electron-main.js",
   "author": "Igreja Batista Palavra da Vida",
@@ -11,6 +11,7 @@
     "dev:web": "vite --configLoader runner --host 127.0.0.1",
     "build": "pnpm run build:web",
     "build:web": "vite build --configLoader runner",
+    "test": "node --test tests/*.test.mjs",
     "build:windows": "pnpm run build:web && electron-builder --win nsis portable --x64",
     "pack": "pnpm run build:web && electron-builder --dir --win --x64"
   },
@@ -18,7 +19,7 @@
     "@supabase/supabase-js": "^2.52.1"
   },
   "devDependencies": {
-    "electron": "37.2.0",
+    "electron": "37.3.1",
     "electron-builder": "26.0.12",
     "vite": "^7.0.5"
   },

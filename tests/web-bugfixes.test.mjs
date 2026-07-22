@@ -15,7 +15,9 @@ test('impressão usa a pré-visualização atual sem abrir about:blank', () => {
 
   assert.match(printFunction, /#preview-content \.report-document/);
   assert.match(printFunction, /document\.fonts\?\.ready/);
-  assert.match(printFunction, /waitForReportImages\(source\)/);
+  assert.match(printFunction, /waitForReportImages\(source,\s*5000\)/);
+  assert.match(printFunction, /Promise\.race\(\[document\.fonts\.ready,timeout\]\)/);
+  assert.match(printFunction, /finally\s*{[\s\S]*?classList\.remove\('is-printing-report'\)/);
   assert.match(printFunction, /window\.print\(\)/);
   assert.doesNotMatch(printFunction, /window\.open|about:blank|document\.write|printWindow/);
 });
@@ -29,7 +31,7 @@ test('folha impressa é A4 e mantém a logo proporcional', () => {
 
 test('salvamento online informa o horário confirmado', () => {
   const source = read('app/scripts/app.js');
-  const saveAt = source.indexOf('item.id=await backend.saveEntry');
+  const saveAt = source.indexOf('const savedEntry=await backend.saveEntry');
   const messageAt = source.indexOf('Salvo na nuvem às', saveAt);
   assert.ok(saveAt >= 0 && messageAt > saveAt, 'confirmação não ocorre depois do salvamento no Supabase');
   assert.match(source.slice(messageAt, messageAt + 180), /toLocaleTimeString\('pt-BR'\)/);

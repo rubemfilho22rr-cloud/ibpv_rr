@@ -40,6 +40,23 @@ function mapEntry(row) {
   };
 }
 
+function reportPayload(report, userId, status) {
+  return {
+    title: report.title,
+    period_type: report.periodType,
+    start_date: report.startDate,
+    end_date: report.endDate,
+    total_income: report.totalIncome,
+    total_expense: report.totalExpense,
+    opening_balance: report.openingBalance,
+    closing_balance: report.closingBalance,
+    status,
+    observations: report.observations || null,
+    report_snapshot: report.snapshot || null,
+    updated_by: userId
+  };
+}
+
 export const backend = {
   mode: isSupabaseConfigured ? 'supabase' : 'local',
   configured: isSupabaseConfigured,
@@ -89,6 +106,71 @@ export const backend = {
     return mapProfile(profile, session.user);
   },
 
+  async beginVisitorSession(name, clientToken) {
+    const client = requireSupabase();
+    const { data, error } = await client.rpc('begin_visitor_session', {
+      p_visitor_name: name,
+      p_client_token: clientToken
+    });
+    check(error);
+    return { id: data, name, clientToken };
+  },
+
+  async resumeVisitorSession(sessionId, clientToken) {
+    const client = requireSupabase();
+    const { data, error } = await client.rpc('resume_visitor_session', {
+      p_session_id: sessionId,
+      p_client_token: clientToken
+    });
+    check(error);
+    return data || null;
+  },
+
+  async visitorActivity(visitor, action, recordId = null, metadata = {}) {
+    if (!visitor?.id || !visitor?.clientToken) return null;
+    const client = requireSupabase();
+    const { data, error } = await client.rpc('record_visitor_activity', {
+      p_session_id: visitor.id,
+      p_client_token: visitor.clientToken,
+      p_action: action,
+      p_record_id: recordId,
+      p_metadata: metadata
+    });
+    check(error);
+    return data;
+  },
+
+  async logActivity(action, {
+    tableName = 'application',
+    recordId = null,
+    description = null,
+    result = 'success',
+    metadata = {}
+  } = {}) {
+    if (!supabase) return null;
+    const { data, error } = await supabase.rpc('record_user_activity', {
+      p_action: action,
+      p_table_name: tableName,
+      p_record_id: recordId,
+      p_description: description,
+      p_result: result,
+      p_metadata: metadata
+    });
+    check(error);
+    return data;
+  },
+
+  async activityLogs(limit = 500) {
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from('audit_logs')
+      .select('id,user_id,actor_type,actor_name,actor_role,visitor_session_id,action,table_name,record_id,description,result,old_data,new_data,metadata,created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    check(error);
+    return data || [];
+  },
+
   async categories() {
     const client = requireSupabase();
     const { data, error } = await client.from('financial_categories').select('id,name,type').eq('active', true).order('sort_order');
@@ -130,11 +212,11 @@ export const backend = {
     if (entry.id) {
       const { data, error } = await client.from('financial_entries').update(payload).eq('id', entry.id).select().single();
       check(error);
-      return data.id;
+      return { id: data.id, updatedAt: data.updated_at };
     }
     const { data, error } = await client.from('financial_entries').insert({ ...payload, created_by: userId }).select().single();
     check(error);
-    return data.id;
+    return { id: data.id, updatedAt: data.updated_at };
   },
 
   async deleteEntry(id) {
@@ -145,28 +227,60 @@ export const backend = {
 
   async publishedReports() {
     const client = requireSupabase();
-    const { data, error } = await client.from('reports').select('*').eq('status', 'publicado').order('start_date', { ascending: false });
+    const { data, error } = await client.rpc('list_public_reports');
+    check(error);
+    return data || [];
+  },
+
+  async publishedReport(reportId, visitor) {
+    const client = requireSupabase();
+    const { data, error } = await client.rpc('get_public_report', {
+      p_report_id: reportId,
+      p_session_id: visitor.id,
+      p_client_token: visitor.clientToken
+    });
+    check(error);
+    return data;
+  },
+
+  async downloadPublishedReport(path) {
+    const client = requireSupabase();
+    const { data, error } = await client.storage.from(REPORTS_BUCKET).download(path);
+    check(error);
+    return data;
+  },
+
+  async saveReportDraft(report, userId) {
+    const client = requireSupabase();
+    const payload = reportPayload(report, userId, 'rascunho');
+    if (report.id) {
+      const { data, error } = await client.from('reports').update(payload).eq('id', report.id).select().single();
+      check(error);
+      return data;
+    }
+    const { data, error } = await client.from('reports').insert({
+      ...payload,
+      created_by: userId
+    }).select().single();
     check(error);
     return data;
   },
 
   async publishReport(report, userId) {
     const client = requireSupabase();
-    const { data, error } = await client.from('reports').insert({
-      title: report.title,
-      period_type: report.periodType,
-      start_date: report.startDate,
-      end_date: report.endDate,
-      total_income: report.totalIncome,
-      total_expense: report.totalExpense,
-      opening_balance: report.openingBalance,
-      closing_balance: report.closingBalance,
-      status: 'publicado',
-      observations: report.observations || null,
+    const payload = {
+      ...reportPayload(report, userId, 'publicado'),
       published_at: new Date().toISOString(),
       published_by: userId,
-      created_by: userId,
-      updated_by: userId
+    };
+    if (report.id) {
+      const { data, error } = await client.from('reports').update(payload).eq('id', report.id).select().single();
+      check(error);
+      return data;
+    }
+    const { data, error } = await client.from('reports').insert({
+      ...payload,
+      created_by: userId
     }).select().single();
     check(error);
     return data;

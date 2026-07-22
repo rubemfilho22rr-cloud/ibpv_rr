@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.0 - Portal de Transparência e histórico
+
+- Removido o painel branco indevido na transição final da apresentação.
+- Área pública renomeada para Portal de Transparência, com identificação somente por nome e sem usuário Supabase Auth.
+- Sessão de visitante restaurada após F5 na mesma aba e encerramento por botão próprio.
+- Relatórios públicos expostos somente quando publicados, por RPCs controladas.
+- Histórico imutável de atividades com filtros, detalhes, atores e resultados.
+- Auditoria financeira e de anexos registrada por gatilhos no banco.
+- Status de nuvem atualizado somente após confirmação real do Supabase.
+- Caminho da logo transformado pelo build para Web, Vercel e Electron.
+- Impressão A4 usa a pré-visualização atual, espera fontes/imagens com limite seguro e restaura a interface no final.
+- Adicionados testes automatizados para sessão, Portal, histórico, nuvem, logo e impressão.
+- Electron atualizado para 37.3.1, mantendo sandbox, isolamento de contexto, integração Node desativada e segurança web.
+
 ## 1.5.4 - Inicialização destravada
 
 - A tela de entrada é liberada por um inicializador independente dos demais módulos.
