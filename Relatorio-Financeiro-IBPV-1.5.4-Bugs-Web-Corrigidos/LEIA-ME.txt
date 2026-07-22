@@ -1,0 +1,33 @@
+RELATÓRIO FINANCEIRO IBPV — VERSÃO WINDOWS
+==========================================
+
+Este pacote transforma o sistema HTML em um aplicativo Windows por meio do Electron.
+
+COMO GERAR O .EXE
+-----------------
+1. Instale o Node.js LTS, caso ainda não esteja instalado.
+2. Mantenha conexão com a internet durante a primeira geração.
+3. Clique duas vezes em GERAR_EXE.bat.
+4. Aguarde a conclusão.
+5. A pasta DIST será aberta automaticamente.
+
+Serão gerados:
+- Instalador do Relatório Financeiro IBPV (.exe)
+- Versão portátil (.exe), que não precisa ser instalada
+
+DADOS E ANEXOS
+--------------
+Os relatórios e anexos continuam armazenados localmente pelo mecanismo do aplicativo.
+A versão instalada e a versão aberta no Chrome não compartilham necessariamente os mesmos dados.
+Antes de migrar definitivamente, mantenha uma cópia dos documentos importantes.
+
+SEGURANÇA DO WINDOWS
+--------------------
+Como o aplicativo não possui certificado digital pago, o Windows SmartScreen pode exibir um aviso.
+Nesse caso, clique em “Mais informações” e depois em “Executar assim mesmo”.
+
+REQUISITOS
+----------
+- Windows 10 ou Windows 11 de 64 bits
+- Node.js LTS apenas para gerar o executável
+- Internet apenas durante a primeira compilação

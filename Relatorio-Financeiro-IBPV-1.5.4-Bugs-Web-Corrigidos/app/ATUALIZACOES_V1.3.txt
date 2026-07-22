@@ -1,0 +1,23 @@
+RELATÓRIO FINANCEIRO IBPV — VERSÃO 1.3
+MÓDULO DE ANEXOS FUNCIONAL
+
+- Anexos múltiplos em cada entrada ou despesa.
+- Aceita PDF, JPG, PNG e WEBP.
+- Limite de 10 MB por arquivo.
+- Seleção de vários arquivos de uma vez.
+- Área de arrastar e soltar (drag and drop).
+- Lista de anexos antes de salvar o lançamento.
+- Visualização do PDF ou imagem em nova aba.
+- Download individual dos arquivos.
+- Remoção de anexos.
+- Contador de anexos em cada lançamento.
+- Central de Anexos no menu administrativo.
+- Documentos gerais do relatório, como extratos, atas e balancetes.
+- Filtros: Todos, Documentos gerais, Entradas e Despesas.
+- Arquivos armazenados no IndexedDB do navegador, evitando sobrecarregar o localStorage.
+- Metadados dos arquivos vinculados corretamente aos lançamentos.
+- Exclusão dos arquivos ao remover definitivamente um lançamento ou anexo.
+
+IMPORTANTE
+Os anexos ficam armazenados localmente no navegador e neste computador.
+Limpar os dados do navegador poderá remover os arquivos. Uma futura versão online deverá usar armazenamento em nuvem.

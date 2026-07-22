@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; object-src 'self' blob:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' blob:; base-uri 'self'; form-action 'self'" />
   <title>Relatório Financeiro IBPV — v1.5.4 Online</title>
-  <script type="module" crossorigin src="./assets/index-BdemzVd0.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CvHevJ4V.css">
+  <link rel="stylesheet" href="styles/main.css" />
+  <link rel="stylesheet" href="styles/premium.css" />
+  <link rel="stylesheet" href="styles/stable-ui.css" />
 </head>
 <body>
   <div id="intro-curtain" aria-hidden="true">
     <div class="intro-mark">
-      <img src="./assets/logo-ibpv-DlyyL0eL.png" alt="" />
+      <img src="assets/logo-ibpv.png" alt="" />
       <span>Relatório Financeiro IBPV</span>
       <div class="intro-loader"></div>
     </div>
@@ -24,7 +25,7 @@
   </div>
 
   <div id="shared-brand" aria-hidden="true">
-    <img src="./assets/logo-ibpv-DlyyL0eL.png" alt="" />
+    <img src="assets/logo-ibpv.png" alt="" />
     <div><strong>Relatório Financeiro</strong><small>Igreja Batista Palavra da Vida</small></div>
   </div>
 
@@ -40,7 +41,7 @@
   <main id="app">
     <section class="screen active welcome-screen" data-screen="welcome">
       <div class="center-card transparent-card">
-        <img class="welcome-logo" src="./assets/logo-ibpv-DlyyL0eL.png" alt="Igreja Batista Palavra da Vida" />
+        <img class="welcome-logo" src="assets/logo-ibpv.png" alt="Igreja Batista Palavra da Vida" />
         <h1 class="welcome-title"><span>Olá! Seja bem-vindo ao</span><span>Relatório Financeiro da</span><span>Igreja Batista Palavra da Vida</span></h1>
         <button class="primary-btn" data-go="about">Continuar</button>
       </div>
@@ -140,7 +141,7 @@
     <section class="screen admin-screen" data-screen="admin-dashboard">
       <div class="app-layout">
         <aside class="sidebar">
-          <div class="brand-block"><img class="sidebar-logo" src="./assets/logo-ibpv-DlyyL0eL.png" alt="IBPV" /><div><strong>IBPV</strong><span>Relatório Financeiro</span></div></div>
+          <div class="brand-block"><img class="sidebar-logo" src="assets/logo-ibpv.png" alt="IBPV" /><div><strong>IBPV</strong><span>Relatório Financeiro</span></div></div>
           <nav>
             <button class="nav-item active" data-admin-tab="report">▣ Relatório</button>
             <button class="nav-item" data-admin-tab="attachments">▤ Anexos</button>
@@ -293,5 +294,8 @@
 
   <script src="./bootstrap.js"></script>
   <script src="./pptxgen.bundle.js"></script>
+  <script type="module" src="scripts/ui-core.js"></script>
+  <script type="module" src="scripts/motion.js"></script>
+  <script type="module" src="scripts/app.js"></script>
 </body>
 </html>

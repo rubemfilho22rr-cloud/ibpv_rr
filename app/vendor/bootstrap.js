@@ -9,7 +9,9 @@
     const welcome = document.querySelector('[data-screen="welcome"]');
 
     curtain?.classList.add('is-gone');
-    welcome?.classList.add('section-visible');
+    if (!body?.classList.contains('app-page')) {
+      welcome?.classList.add('section-visible');
+    }
     document.documentElement.classList.add('ui-core-ready');
     body?.classList.add('ui-ready');
 
