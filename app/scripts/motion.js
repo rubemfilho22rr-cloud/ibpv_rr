@@ -90,9 +90,9 @@
 
   function initIntro(){
     const curtain=qs('#intro-curtain');
-    const reveal=()=>setTimeout(()=>{curtain?.classList.add('is-gone');qs('[data-screen="welcome"]')?.classList.add('section-visible')},650);
-    if(document.readyState==='complete') reveal();
-    else window.addEventListener('load',reveal,{once:true});
+    const reveal=()=>{if(!window.IBPVSessionGate?.isReady())return;setTimeout(()=>{curtain?.classList.add('is-gone');qs('[data-screen="welcome"]')?.classList.add('section-visible')},120)};
+    window.addEventListener('ibpv-session-ready',reveal,{once:true});
+    if(window.IBPVSessionGate?.isReady())reveal();
   }
 
   function initProgress(){

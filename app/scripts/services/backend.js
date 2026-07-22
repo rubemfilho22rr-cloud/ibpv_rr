@@ -69,6 +69,12 @@ export const backend = {
     check(error);
   },
 
+  onAuthStateChange(callback) {
+    if (!supabase) return () => {};
+    const { data } = supabase.auth.onAuthStateChange(callback);
+    return () => data.subscription.unsubscribe();
+  },
+
   async profile(userId) {
     const client = requireSupabase();
     const { data, error } = await client.from('profiles').select('*').eq('id', userId).single();
@@ -76,8 +82,8 @@ export const backend = {
     return data;
   },
 
-  async currentUser() {
-    const session = await this.session();
+  async currentUser(existingSession = null) {
+    const session = existingSession || await this.session();
     if (!session?.user) return null;
     const profile = await this.profile(session.user.id);
     return mapProfile(profile, session.user);

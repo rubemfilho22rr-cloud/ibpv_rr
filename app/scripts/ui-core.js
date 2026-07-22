@@ -55,7 +55,9 @@
     installAnimationWatchdog();
     root.classList.add('ui-core-ready');
     body.classList.add('ui-ready');
-    document.getElementById('intro-curtain')?.classList.add('is-gone');
+    if (window.IBPVSessionGate?.isReady()) {
+      document.getElementById('intro-curtain')?.classList.add('is-gone');
+    }
 
     window.addEventListener('pageshow', () => {
       clearTransientState();

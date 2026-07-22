@@ -18,17 +18,11 @@
     }
 
     released = true;
+    window.dispatchEvent(new CustomEvent('ibpv-session-ready'));
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', releaseInterface, { once: true });
-  } else {
-    releaseInterface();
-  }
-
-  window.addEventListener('error', releaseInterface, true);
-  window.addEventListener('unhandledrejection', releaseInterface, true);
-  setTimeout(() => {
-    if (!released) releaseInterface();
-  }, 1500);
+  window.IBPVSessionGate = Object.freeze({
+    release: releaseInterface,
+    isReady: () => released
+  });
 })();

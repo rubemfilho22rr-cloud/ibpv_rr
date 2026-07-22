@@ -10,6 +10,10 @@ const usersKey='ibpv-admin-users-v2';
 const publishedKey='ibpv-published-reports-v1';
 let state=loadState();
 let currentUser=null;
+let authActionInProgress=false;
+let initialSessionResolved=false;
+let unsubscribeAuthState=()=>{};
+let authStateTask=Promise.resolve();
 
 let pendingTransactionAttachments=[];
 let originalTransactionAttachmentIds=new Set();
@@ -309,6 +313,86 @@ async function syncEntries(){
   state.transactions=await backend.entries(startDate,endDate);
   renderAdmin();
 }
+
+function isMemberProfile(user){return user?.role==='membro';}
+
+async function openAuthenticatedArea(user,{sync=true,navigate=true}={}){
+  currentUser=user;
+  if(isMemberProfile(user)){
+    document.getElementById('member-welcome').textContent=`Bem-vindo, ${user.name}`;
+    if(navigate)showScreen('member-portal');
+    return;
+  }
+  if(sync)await syncEntries();
+  else renderAdmin();
+  if(navigate)showScreen('admin-dashboard');
+}
+
+async function restoreAuthenticatedSession(session,{sync=true,navigate=true}={}){
+  const user=await backend.currentUser(session);
+  if(!user?.active){
+    await backend.signOut();
+    throw new Error('Este usuário está inativo. Procure o administrador.');
+  }
+  await openAuthenticatedArea(user,{sync,navigate});
+  return user;
+}
+
+function handleAuthStateChange(event,session){
+  authStateTask=authStateTask.then(async()=>{
+    if(!initialSessionResolved||authActionInProgress||event==='INITIAL_SESSION')return;
+    if(event==='SIGNED_OUT'||!session?.user){
+      currentUser=null;
+      showScreen('profile');
+      return;
+    }
+    if(event==='SIGNED_IN'){
+      if(currentUser?.id===session.user.id)return;
+      await restoreAuthenticatedSession(session,{sync:true,navigate:true});
+      return;
+    }
+    if(event==='USER_UPDATED'||event==='TOKEN_REFRESHED'){
+      const previousRole=currentUser?.role;
+      const user=await backend.currentUser(session);
+      if(!user?.active){
+        authActionInProgress=true;
+        try{await backend.signOut();}finally{authActionInProgress=false;}
+        currentUser=null;
+        showScreen('profile');
+        return;
+      }
+      const roleChanged=previousRole&&previousRole!==user.role;
+      await openAuthenticatedArea(user,{
+        sync:Boolean(roleChanged&&!isMemberProfile(user)),
+        navigate:Boolean(roleChanged)
+      });
+    }
+  }).catch(error=>{
+    console.error('Falha ao atualizar a sessão autenticada:',error);
+  });
+}
+
+async function initializeAuthenticatedSession(){
+  try{
+    if(!backend.configured){
+      enterFlowMode('welcome',true);
+      return;
+    }
+    const session=await backend.session();
+    if(session?.user)await restoreAuthenticatedSession(session,{sync:true,navigate:true});
+    else enterFlowMode('welcome',true);
+    unsubscribeAuthState=backend.onAuthStateChange((event,nextSession)=>{
+      setTimeout(()=>handleAuthStateChange(event,nextSession),0);
+    });
+  }catch(error){
+    console.error('Não foi possível restaurar a sessão:',error);
+    currentUser=null;
+    enterFlowMode('welcome',true);
+  }finally{
+    initialSessionResolved=true;
+    window.IBPVSessionGate?.release();
+  }
+}
 function aggregateByMonth(items){
   const range=getCurrentPeriod();
   const labels=[];const entries=[];const expenses=[];
@@ -329,11 +413,13 @@ memberForm.addEventListener('submit',async e=>{
   e.preventDefault();
   const email=document.getElementById('member-name').value.trim();
   const password=document.getElementById('member-password').value;
+  authActionInProgress=true;
   try{
     currentUser=await backend.signIn(email,password);
     document.getElementById('member-welcome').textContent=`Bem-vindo, ${currentUser.name}`;
     showScreen('member-portal');
   }catch(error){console.error(error);alert(error.message||'Não foi possível entrar.');}
+  finally{authActionInProgress=false;}
 });
 
 function prepareAuth(){document.getElementById('auth-title').textContent='Login';document.getElementById('auth-description').textContent=backend.configured?'Informe seu e-mail e senha para acessar a área administrativa.':'Supabase não configurado; o modo local de compatibilidade está ativo.';document.getElementById('activation-group').style.display='none';document.getElementById('auth-submit').textContent='Entrar';document.getElementById('admin-name').value='';}
@@ -342,6 +428,7 @@ document.getElementById('auth-form').addEventListener('submit',async e=>{
   e.preventDefault();
   const email=document.getElementById('admin-name').value.trim();
   const password=document.getElementById('admin-password').value;
+  authActionInProgress=true;
   try{
     if(backend.configured){
       currentUser=await backend.signIn(email,password);
@@ -357,9 +444,19 @@ document.getElementById('auth-form').addEventListener('submit',async e=>{
     }
     document.getElementById('auth-form').reset();showScreen('admin-dashboard');
   }catch(error){console.error(error);alert(error.message||'Não foi possível entrar.');}
+  finally{authActionInProgress=false;}
 });
 
-document.getElementById('logout-btn').addEventListener('click',async()=>{await backend.signOut().catch(console.error);currentUser=null;showScreen('profile');});
+document.getElementById('logout-btn').addEventListener('click',async()=>{
+  authActionInProgress=true;
+  try{await backend.signOut();}
+  catch(error){console.error(error);}
+  finally{
+    currentUser=null;
+    authActionInProgress=false;
+    showScreen('profile');
+  }
+});
 
 const modal=document.getElementById('transaction-modal');
 document.querySelectorAll('[data-open-modal]').forEach(btn=>btn.addEventListener('click',()=>openTransactionModal(btn.dataset.openModal)));
@@ -557,8 +654,6 @@ async function renderPublishedReports(){
 }
 document.addEventListener('click',e=>{const open=e.target.closest('[data-open-published]');if(!open)return;const report=JSON.parse(localStorage.getItem(publishedKey)||'[]').find(r=>r.id===open.dataset.openPublished);if(!report)return;const old=state;state=report.snapshot;buildPreview();state=old;});
 
-enterFlowMode('welcome',true);
-
 // Apresentação PowerPoint dinâmica para a assembleia
 
 const usersModal=document.getElementById('users-modal');
@@ -747,3 +842,5 @@ async function generatePowerPoint(){
 document.getElementById('download-presentation').addEventListener('click',generatePowerPoint);
 
 ensureAttachmentState();saveState();
+window.addEventListener('beforeunload',()=>unsubscribeAuthState(),{once:true});
+initializeAuthenticatedSession();
