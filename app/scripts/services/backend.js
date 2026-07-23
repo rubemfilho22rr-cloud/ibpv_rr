@@ -2,6 +2,7 @@ import { isSupabaseConfigured, requireSupabase, supabase } from './supabase.js';
 
 const ATTACHMENTS_BUCKET = 'comprovantes-financeiros';
 const REPORTS_BUCKET = 'relatorios-publicados';
+const SIGNED_REPORTS_BUCKET = 'relatorios-assinados';
 
 function check(error) {
   if (error) throw error;
@@ -11,9 +12,11 @@ function mapProfile(profile, user) {
   return {
     id: profile.id,
     name: profile.full_name || user?.email || 'Usuário',
-    email: user?.email || '',
+    email: profile.email || user?.email || '',
     role: profile.role,
-    active: profile.active
+    active: profile.active,
+    mustChangePassword: Boolean(profile.must_change_password),
+    lastAccessAt: profile.last_access_at || null
   };
 }
 
@@ -28,6 +31,8 @@ function mapEntry(row) {
     method: row.payment_method || '',
     value: Number(row.amount),
     notes: row.notes || '',
+    sourceType: row.source_type || null,
+    sourceId: row.source_id || null,
     attachments: (row.attachments || []).map(item => ({
       id: item.id,
       name: item.file_name,
@@ -38,6 +43,26 @@ function mapEntry(row) {
       storageBucket: item.storage_bucket
     }))
   };
+}
+
+async function adminRequest(action, payload = {}) {
+  const client = requireSupabase();
+  const { data: sessionData, error: sessionError } = await client.auth.getSession();
+  check(sessionError);
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error('Sua sessão expirou. Entre novamente.');
+
+  const response = await fetch('/api/admin-users', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ action, ...payload })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || 'Não foi possível concluir a operação.');
+  return result;
 }
 
 function reportPayload(report, userId, status) {
@@ -178,6 +203,13 @@ export const backend = {
     return data;
   },
 
+  async positions() {
+    const client = requireSupabase();
+    const { data, error } = await client.rpc('list_report_signatories');
+    check(error);
+    return data || [];
+  },
+
   async entries(startDate, endDate) {
     const client = requireSupabase();
     const { data, error } = await client
@@ -199,6 +231,7 @@ export const backend = {
       check(error);
       categoryId = data?.id || null;
     }
+    if (!categoryId) throw new Error('Escolha uma categoria válida para o lançamento.');
     const payload = {
       type: entry.type,
       category_id: categoryId,
@@ -223,6 +256,62 @@ export const backend = {
     const client = requireSupabase();
     const { error } = await client.from('financial_entries').delete().eq('id', id);
     check(error);
+  },
+
+  async previousReport(beforeDate) {
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from('reports')
+      .select('id,title,start_date,end_date,closing_balance,status,report_snapshot,updated_at')
+      .lt('start_date', beforeDate)
+      .in('status', ['rascunho', 'em_revisao', 'publicado', 'arquivado'])
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    check(error);
+    return data || null;
+  },
+
+  async tithers() {
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from('tithers')
+      .select('id,full_name,active,created_at,updated_at')
+      .eq('active', true)
+      .order('full_name');
+    check(error);
+    return data || [];
+  },
+
+  async createTither(fullName) {
+    const client = requireSupabase();
+    const { data, error } = await client.rpc('create_tither', { p_full_name: fullName });
+    check(error);
+    return data;
+  },
+
+  async titheSheet(referenceMonth) {
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from('tithe_sheets')
+      .select('id,reference_month,total_amount,financial_entry_id,updated_at,tithe_items(id,tither_id,amount,tithers(full_name))')
+      .eq('reference_month', referenceMonth)
+      .maybeSingle();
+    check(error);
+    return data || null;
+  },
+
+  async saveTitheSheet(referenceMonth, items) {
+    const client = requireSupabase();
+    const { data, error } = await client.rpc('save_tithe_sheet', {
+      p_reference_month: referenceMonth,
+      p_items: items.map(item => ({
+        tither_id: item.titherId,
+        amount: Number(item.amount || 0)
+      }))
+    });
+    check(error);
+    return data;
   },
 
   async publishedReports() {
@@ -286,6 +375,107 @@ export const backend = {
     return data;
   },
 
+  async signedReports() {
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from('signed_reports')
+      .select('id,reference_month,report_id,file_name,storage_path,file_size,mime_type,status,published_at,created_at,updated_at')
+      .order('reference_month', { ascending: false });
+    check(error);
+    return data || [];
+  },
+
+  async uploadSignedReport({ file, referenceMonth, reportId, userId }) {
+    if (file.type !== 'application/pdf') throw new Error('Selecione um arquivo PDF.');
+    const client = requireSupabase();
+    const { data: previous, error: previousError } = await client
+      .from('signed_reports')
+      .select('id,storage_path')
+      .eq('reference_month', referenceMonth)
+      .maybeSingle();
+    check(previousError);
+
+    const path = `${referenceMonth.slice(0, 7)}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const { error: uploadError } = await client.storage
+      .from(SIGNED_REPORTS_BUCKET)
+      .upload(path, file, { contentType: 'application/pdf', upsert: false });
+    check(uploadError);
+
+    const payload = {
+      reference_month: referenceMonth,
+      report_id: reportId || null,
+      file_name: file.name,
+      storage_bucket: SIGNED_REPORTS_BUCKET,
+      storage_path: path,
+      file_size: file.size,
+      mime_type: 'application/pdf',
+      status: 'rascunho',
+      uploaded_by: userId,
+      published_by: null,
+      published_at: null
+    };
+    const { data, error } = await client
+      .from('signed_reports')
+      .upsert(payload, { onConflict: 'reference_month' })
+      .select()
+      .single();
+    if (error) {
+      await client.storage.from(SIGNED_REPORTS_BUCKET).remove([path]);
+      throw error;
+    }
+    if (previous?.storage_path && previous.storage_path !== path) {
+      await client.storage.from(SIGNED_REPORTS_BUCKET).remove([previous.storage_path]);
+    }
+    return data;
+  },
+
+  async publishSignedReport(id, userId) {
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from('signed_reports')
+      .update({
+        status: 'publicado',
+        published_by: userId,
+        published_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    check(error);
+    return data;
+  },
+
+  async signedReportUrl(path) {
+    return this.signedAttachmentUrl(path, SIGNED_REPORTS_BUCKET);
+  },
+
+  async downloadPublicSignedReport(path) {
+    const client = requireSupabase();
+    const { data, error } = await client.storage.from(SIGNED_REPORTS_BUCKET).download(path);
+    check(error);
+    return data;
+  },
+
+  async adminUsers() {
+    return adminRequest('list');
+  },
+
+  async createAdminUser(payload) {
+    return adminRequest('create', payload);
+  },
+
+  async updateAdminUser(payload) {
+    return adminRequest('update', payload);
+  },
+
+  async resetTemporaryPassword(userId) {
+    return adminRequest('reset-password', { userId });
+  },
+
+  async changeOwnPassword(password) {
+    return adminRequest('change-own-password', { password });
+  },
+
   async uploadAttachment({ file, entryId, reportId, userId }) {
     const client = requireSupabase();
     const owner = entryId || reportId;
@@ -323,5 +513,9 @@ export const backend = {
     check(error);
   },
 
-  buckets: Object.freeze({ attachments: ATTACHMENTS_BUCKET, reports: REPORTS_BUCKET })
+  buckets: Object.freeze({
+    attachments: ATTACHMENTS_BUCKET,
+    reports: REPORTS_BUCKET,
+    signedReports: SIGNED_REPORTS_BUCKET
+  })
 };

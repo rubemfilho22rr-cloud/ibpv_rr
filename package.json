@@ -1,6 +1,6 @@
 {
   "name": "relatorio-financeiro-ibpv",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Relatório Financeiro da Igreja Batista Palavra da Vida",
   "main": "electron-main.js",
   "author": "Igreja Batista Palavra da Vida",

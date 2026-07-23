@@ -3,8 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Portal de Transparência e Relatório Financeiro da Igreja Batista Palavra da Vida." />
+  <link rel="canonical" href="https://www.ibpvrr.com.br/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:site_name" content="Relatório Financeiro IBPV" />
+  <meta property="og:title" content="Relatório Financeiro IBPV" />
+  <meta property="og:description" content="Transparência, organização e responsabilidade." />
+  <meta property="og:url" content="https://www.ibpvrr.com.br/" />
+  <meta property="og:image" content="https://www.ibpvrr.com.br/social-preview-ibpv-v1.png" />
+  <meta property="og:image:secure_url" content="https://www.ibpvrr.com.br/social-preview-ibpv-v1.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1731" />
+  <meta property="og:image:height" content="909" />
+  <meta property="og:image:alt" content="Relatório Financeiro IBPV — Igreja Batista Palavra da Vida" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Relatório Financeiro IBPV" />
+  <meta name="twitter:description" content="Transparência, organização e responsabilidade." />
+  <meta name="twitter:image" content="https://www.ibpvrr.com.br/social-preview-ibpv-v1.png" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; object-src 'self' blob:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' blob:; base-uri 'self'; form-action 'self'" />
-  <title>Relatório Financeiro IBPV — v1.6.0 Online</title>
+  <title>Relatório Financeiro IBPV — v1.7.0 Online</title>
   <link rel="stylesheet" href="styles/main.css" />
   <link rel="stylesheet" href="styles/premium.css" />
   <link rel="stylesheet" href="styles/stable-ui.css" />
@@ -144,10 +162,12 @@
           <div class="brand-block"><img class="sidebar-logo" src="assets/logo-ibpv.png" alt="IBPV" /><div><strong>IBPV</strong><span>Relatório Financeiro</span></div></div>
           <nav>
             <button class="nav-item active" data-admin-tab="report">▣ Relatório</button>
+            <button class="nav-item" id="tithes-nav">♧ Relação de dizimistas</button>
             <button class="nav-item" data-admin-tab="attachments">▤ Anexos</button>
             <button class="nav-item" data-admin-tab="preview">◫ Pré-visualização</button>
             <button class="nav-item" id="presentation-nav">▰ Apresentação</button>
             <button class="nav-item" data-admin-tab="published">◉ Publicados</button>
+            <button class="nav-item" id="signed-reports-nav">✓ Relatórios assinados</button>
             <button class="nav-item" id="users-nav">♟ Usuários</button>
             <button class="nav-item" id="activity-log-nav">◷ Histórico de atividades</button>
             <button class="nav-item" data-admin-tab="settings">⚙ Configurações</button>
@@ -190,7 +210,7 @@
                 <section class="card table-card"><div class="card-title red">Despesas</div><div id="expenses-list" class="transaction-list"></div></section>
               </div>
               <aside class="summary-column">
-                <section class="card summary-card"><h3>Resumo financeiro</h3><div class="summary-line"><span>Saldo anterior</span><strong id="summary-previous">R$ 0,00</strong></div><div class="summary-line green"><span>Total de entradas</span><strong id="summary-entries">R$ 0,00</strong></div><div class="summary-line red"><span>Total de despesas</span><strong id="summary-expenses">R$ 0,00</strong></div><div class="summary-total"><span>Saldo final</span><strong id="summary-final">R$ 0,00</strong></div></section>
+                <section class="card summary-card"><h3>Resumo financeiro</h3><div class="summary-line"><span>Saldo anterior</span><strong id="summary-previous">R$ 0,00</strong></div><div class="summary-line green"><span>Total de entradas</span><strong id="summary-entries">R$ 0,00</strong></div><div class="summary-line available"><span>Total disponível</span><strong id="summary-available">R$ 0,00</strong></div><div class="summary-line red"><span>Total de despesas</span><strong id="summary-expenses">R$ 0,00</strong></div><div class="summary-total"><span>Saldo para o próximo mês</span><strong id="summary-final">R$ 0,00</strong></div></section>
                 <section class="card info-card"><h3>Informações do relatório</h3><p><span>Status</span><strong>Em elaboração</strong></p><p><span>Responsável</span><strong id="report-owner">—</strong></p><p><span>Última alteração</span><strong id="last-update">—</strong></p><p><span>Armazenamento</span><strong id="cloud-storage-status">Verificando...</strong></p><p><span>Última sincronização</span><strong id="last-cloud-sync">—</strong></p></section>
               </aside>
             </section>
@@ -206,10 +226,10 @@
       <input type="hidden" id="editing-id" />
       <input type="hidden" id="transaction-type" />
       <div class="form-grid">
-        <label>Data<input id="transaction-date" type="date" required /></label>
+        <label>Mês de referência<input id="transaction-date" type="month" required /></label>
         <label>Valor<input id="transaction-value" type="number" min="0.01" step="0.01" required /></label>
         <label class="span-2">Descrição<input id="transaction-description" type="text" required /></label>
-        <label>Categoria<input id="transaction-category" type="text" placeholder="Ex.: Dízimos, Contas" /></label>
+        <label>Categoria<select id="transaction-category" required><option value="">Selecione</option></select></label>
         <label>Forma<input id="transaction-method" type="text" placeholder="Pix, dinheiro, transferência" /></label>
         <label class="span-2">Observações<textarea id="transaction-notes" rows="3"></textarea></label>
         <div class="span-2 attachment-field">
@@ -279,6 +299,36 @@
     </div>
   </dialog>
 
+  <dialog id="tithes-modal" class="modal">
+    <div class="modal-card tithes-modal-card">
+      <div class="modal-header"><div><span class="eyebrow">Controle interno</span><h2>Relação de dizimistas</h2><p>Os nomes e valores individuais ficam restritos à equipe financeira.</p></div><button type="button" id="close-tithes" class="icon-btn">×</button></div>
+      <section class="tithes-toolbar">
+        <label>Mês de referência<input id="tithes-reference-month" type="month" required></label>
+        <button type="button" id="load-tithes" class="outline-btn">Carregar mês</button>
+        <button type="button" id="add-tither" class="outline-btn">＋ Cadastrar nome</button>
+      </section>
+      <div class="tithe-privacy-note">No Portal de Transparência serão exibidos somente a quantidade de dizimistas e o valor total do mês.</div>
+      <div id="tithes-list" class="tithes-list"></div>
+      <div class="tithes-total"><span>Total de dízimos do mês</span><strong id="tithes-total-value">R$ 0,00</strong></div>
+      <div class="modal-actions"><button type="button" id="print-tithes" class="outline-btn">Gerar relação interna</button><button type="button" id="save-tithes" class="primary-btn">Salvar e vincular à entrada</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="signed-reports-modal" class="modal">
+    <div class="modal-card signed-reports-modal-card">
+      <div class="modal-header"><div><span class="eyebrow">Documentos oficiais</span><h2>Relatórios assinados</h2><p>Envie o PDF depois das assinaturas e publique-o no Portal de Transparência.</p></div><button type="button" id="close-signed-reports" class="icon-btn">×</button></div>
+      <section class="signed-upload-card">
+        <label>Mês de referência<input id="signed-report-month" type="month" required></label>
+        <input id="signed-report-file" type="file" accept="application/pdf" hidden>
+        <button type="button" id="choose-signed-report" class="outline-btn">Selecionar PDF assinado</button>
+        <span id="signed-report-file-name">Nenhum arquivo selecionado</span>
+        <button type="button" id="upload-signed-report" class="primary-btn">Enviar PDF</button>
+      </section>
+      <div class="signed-version-note">Ao enviar outro PDF para o mesmo mês, a versão online anterior será substituída.</div>
+      <div id="signed-reports-list" class="signed-reports-list"></div>
+    </div>
+  </dialog>
+
   <dialog id="activity-log-modal" class="modal">
     <div class="modal-card activity-log-modal-card">
       <div class="modal-header"><div><span class="eyebrow">Auditoria</span><h2>Histórico de atividades</h2><p>Registro imutável de acessos e alterações realizadas no sistema.</p></div><button type="button" id="close-activity-log" class="icon-btn">×</button></div>
@@ -300,11 +350,32 @@
       <input type="hidden" id="user-edit-id">
       <div class="form-grid">
         <label class="span-2">Nome completo<input id="user-edit-name" type="text" required></label>
-        <label>Função<select id="user-edit-role"><option>Administrador</option><option>Tesouraria</option><option>Conselho Fiscal</option></select></label>
+        <label class="span-2">E-mail de acesso<input id="user-edit-email" type="email" autocomplete="off" required></label>
+        <label>Permissão<select id="user-edit-role"><option value="administrador">Administrador</option><option value="tesouraria">Tesouraria</option><option value="conselho">Conselho Fiscal</option></select></label>
+        <label>Cargo nas assinaturas<select id="user-edit-position"><option value="">Sem cargo de assinatura</option></select></label>
         <label>Status<select id="user-edit-status"><option value="true">Ativo</option><option value="false">Inativo</option></select></label>
-        <label class="span-2">Senha<input id="user-edit-password" type="password" placeholder="Deixe em branco para manter a senha atual"></label>
+        <div class="span-2 temporary-password-note">Ao criar um usuário, o sistema gera uma senha temporária segura. Ela será mostrada uma única vez e deverá ser trocada no primeiro acesso.</div>
       </div>
-      <div class="modal-actions"><button type="button" id="cancel-user-edit" class="outline-btn">Cancelar</button><button type="submit" class="primary-btn">Salvar usuário</button></div>
+      <div class="modal-actions"><button type="button" id="reset-user-password" class="outline-btn" hidden>Gerar nova senha temporária</button><button type="button" id="cancel-user-edit" class="outline-btn">Cancelar</button><button type="submit" class="primary-btn">Salvar usuário</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="temporary-password-modal" class="modal">
+    <div class="modal-card temporary-password-card">
+      <div class="modal-header"><div><span class="eyebrow">Primeiro acesso</span><h2>Senha temporária criada</h2></div><button type="button" id="close-temporary-password" class="icon-btn">×</button></div>
+      <p>Copie e entregue esta senha ao usuário. Por segurança, ela não será mostrada novamente.</p>
+      <div class="temporary-password-value"><code id="temporary-password-value"></code><button type="button" id="copy-temporary-password" class="outline-btn">Copiar</button></div>
+      <div class="modal-actions"><button type="button" id="confirm-temporary-password" class="primary-btn">Já copiei</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="change-password-modal" class="modal" data-mandatory>
+    <form id="change-password-form" class="modal-card change-password-card">
+      <div class="modal-header"><div><span class="eyebrow">Proteção da conta</span><h2>Crie sua senha definitiva</h2><p>Esta troca é obrigatória antes de acessar os dados financeiros.</p></div></div>
+      <label>Nova senha<input id="new-own-password" type="password" minlength="10" autocomplete="new-password" required></label>
+      <label>Confirmar nova senha<input id="confirm-own-password" type="password" minlength="10" autocomplete="new-password" required></label>
+      <small>Use pelo menos 10 caracteres, com letras e números.</small>
+      <div class="modal-actions"><button type="submit" class="primary-btn">Salvar nova senha</button></div>
     </form>
   </dialog>
 

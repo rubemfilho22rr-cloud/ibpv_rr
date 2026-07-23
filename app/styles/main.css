@@ -248,3 +248,58 @@ body.flow-page{overflow:hidden!important}
 .activity-log-modal-card{width:min(1180px,calc(100vw - 32px));max-height:92vh;overflow:auto}.activity-log-modal-card .modal-header p{color:var(--muted);margin:7px 0 0}.activity-log-filters{display:grid;grid-template-columns:145px 145px 145px 180px minmax(220px,1fr) auto;align-items:end;gap:10px;margin:20px 0;padding:15px;border:1px solid var(--line);border-radius:15px;background:#fbf8f5}.activity-log-filters label{display:grid;gap:6px;color:#5e493d;font-size:12px;font-weight:800}.activity-log-filters input,.activity-log-filters select{width:100%;min-height:41px;padding:9px 10px;border:1px solid #ddcfc4;border-radius:9px;background:#fff;color:var(--ink)}.activity-log-list{display:grid;gap:9px}.activity-log-item{display:grid;grid-template-columns:112px minmax(0,1fr) 230px;gap:16px;padding:14px;border:1px solid #e5d9cf;border-radius:14px;background:#fff}.activity-log-item.failed{border-color:#efc2c2;background:#fffafa}.activity-log-time,.activity-log-actor{display:grid;align-content:start;gap:3px}.activity-log-time span,.activity-log-actor span,.activity-log-actor small{font-size:11px;color:var(--muted)}.activity-log-main{min-width:0}.activity-log-heading{display:flex;align-items:center;gap:9px}.activity-log-main p{margin:5px 0;color:#74645b;font-size:12px}.activity-result{display:inline-flex;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:850}.activity-result.success{background:#e8f7ee;color:#167a42}.activity-result.failure{background:#fdeaea;color:#b42e2e}.activity-log-main details{margin-top:8px}.activity-log-main summary{width:max-content;color:#704128;font-size:11px;font-weight:800;cursor:pointer}.activity-detail-grid{display:grid;gap:8px;margin-top:8px}.activity-detail-grid section{min-width:0;padding:9px;border-radius:9px;background:#f7f3ef}.activity-detail-grid pre{max-height:220px;margin:6px 0 0;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:10px;color:#4c3a31}.report-brand-logo{display:block;width:140px;max-width:140px;max-height:90px;height:auto;object-fit:contain}
 @media(max-width:1050px){.activity-log-filters{grid-template-columns:repeat(3,1fr)}.activity-search{grid-column:span 2}.activity-log-item{grid-template-columns:100px minmax(0,1fr)}.activity-log-actor{grid-column:2}}
 @media(max-width:700px){.activity-log-filters{grid-template-columns:1fr}.activity-search{grid-column:auto}.activity-log-item{grid-template-columns:1fr}.activity-log-actor{grid-column:auto}.activity-log-heading{align-items:flex-start;flex-direction:column}}
+
+/* V1.7 — períodos mensais, dizimistas, usuários e documentos assinados */
+.summary-line.available{margin-top:4px;padding-top:10px;border-top:1px dashed #dfd2c8}.summary-line.available strong{color:#704128}.automatic-entry-badge,.published-badge{display:inline-flex;align-items:center;justify-content:center;padding:5px 8px;border-radius:999px;background:#edf7f0;color:#187846;font-size:10px;font-weight:850}.tithes-modal-card,.signed-reports-modal-card{width:min(980px,94vw);max-height:90vh;overflow:auto}.tithes-toolbar,.signed-upload-card{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:15px;border:1px solid var(--line);border-radius:15px;background:#fbf8f5}.tithes-toolbar label,.signed-upload-card label{display:grid;gap:6px;font-size:12px;font-weight:800;color:#5e493d}.tithes-toolbar input,.signed-upload-card input{min-height:42px;padding:9px 11px;border:1px solid #ddcfc4;border-radius:9px;background:#fff}.tithe-privacy-note,.signed-version-note,.temporary-password-note{margin:12px 0;padding:11px 13px;border:1px solid #ead8c9;border-radius:11px;background:#fbf6f1;color:#725746;font-size:12px;line-height:1.45}.tithes-list{display:grid;gap:7px;margin:14px 0;max-height:48vh;overflow:auto}.tithe-row{display:grid;grid-template-columns:42px minmax(180px,1fr) 170px;align-items:center;gap:12px;padding:10px 12px;border:1px solid #e8ddd4;border-radius:12px;background:#fff}.tithe-row>span{width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:#f2e8df;color:#704128;font-weight:850}.tithe-row label{display:grid;grid-template-columns:auto 110px;align-items:center;gap:8px;font-size:12px;font-weight:800}.tithe-row input{min-width:0;padding:8px 9px;border:1px solid #ddcfc4;border-radius:8px}.tithes-total{display:flex;align-items:center;justify-content:space-between;padding:15px;border-radius:14px;background:#f3ebe4;color:#4a3024}.tithes-total strong{font-size:20px;color:#704128}.signed-upload-card{display:grid;grid-template-columns:180px auto minmax(180px,1fr) auto}.signed-report-file-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12px}.signed-reports-list{display:grid;gap:9px;margin-top:14px}.signed-report-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 14px;border:1px solid #e5d9cf;border-radius:14px;background:#fff}.signed-report-row>div:first-child{display:grid;gap:3px}.signed-report-row span,.signed-report-row small{color:var(--muted);font-size:12px}.signed-report-actions{display:flex;gap:8px;align-items:center}.temporary-password-card,.change-password-card{width:min(550px,92vw)}.temporary-password-value{display:flex;align-items:center;gap:10px;padding:14px;border:1px dashed #bd9a82;border-radius:13px;background:#fbf6f1}.temporary-password-value code{flex:1;font-size:17px;font-weight:850;overflow-wrap:anywhere}.change-password-card>label{display:grid;gap:6px;margin-top:12px;font-weight:800;font-size:12px}.change-password-card input{padding:12px;border:1px solid #ddcfc4;border-radius:10px}.public-report-summary{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.public-report-summary span{padding:7px 9px;border-radius:10px;background:#f7f1eb;color:#725746;font-size:11px}.public-report-summary strong{color:#4b3023}
+@media(max-width:760px){.tithe-row{grid-template-columns:34px 1fr}.tithe-row label{grid-column:2}.signed-upload-card{grid-template-columns:1fr}.signed-report-row{align-items:stretch;flex-direction:column}.signed-report-actions{flex-wrap:wrap}}
+
+/* Documento V1.7 — novo cálculo, assinaturas e relação interna de dízimos */
+.report-summary-strip{
+  grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr) 30px minmax(0,1fr) 30px minmax(0,1fr) 30px minmax(0,1.2fr)
+}
+.report-summary-strip>div{min-width:0;padding:15px 12px}
+.report-summary-strip strong{font-size:15px;white-space:nowrap}
+.report-summary-strip .final strong{font-size:17px}
+.report-signatures{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:42px 68px;
+  margin:58px 42px 32px;
+  break-inside:avoid;
+  page-break-inside:avoid
+}
+.report-signature{min-height:62px;text-align:center;display:grid;align-content:end}
+.report-signature>span{display:block;border-top:1px solid #303030;margin-bottom:8px}
+.report-signature strong{font-size:12px;color:#303030}
+.report-signature small{font-size:11px;color:#5b6470;margin-top:4px}
+.report-signature:last-child:nth-child(odd){grid-column:1/-1;width:46%;justify-self:center}
+.tithe-report-table th:nth-child(1),.tithe-report-table td:nth-child(1){width:12%;text-align:center}
+.tithe-report-table th:nth-child(2),.tithe-report-table td:nth-child(2){width:63%;text-align:left}
+.tithe-report-table th:nth-child(3),.tithe-report-table td:nth-child(3){width:25%;text-align:right}
+
+@media(max-width:850px){
+  .report-summary-strip{grid-template-columns:1fr}
+  .report-summary-strip>div{padding:14px 16px}
+  .report-signatures{grid-template-columns:1fr;gap:40px;margin:52px 28px 28px}
+  .report-signature:last-child:nth-child(odd){grid-column:auto;width:100%}
+}
+
+@media print{
+  .report-summary-strip{
+    margin:3.2mm 0;
+    grid-template-columns:1fr 5mm 1fr 5mm 1fr 5mm 1fr 5mm 1.35fr
+  }
+  .report-summary-strip>div{min-width:0;padding:2.6mm 2mm}
+  .report-summary-strip strong{font-size:9pt;white-space:nowrap}
+  .report-summary-strip .final strong{font-size:10.5pt}
+  .report-signatures{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10mm 18mm;
+    margin:14mm 8mm 8mm
+  }
+  .report-signature{min-height:16mm}
+  .report-signature>span{border-top:.3mm solid #303030;margin-bottom:2mm}
+  .report-signature strong{font-size:8pt}
+  .report-signature small{font-size:7pt;margin-top:.8mm}
+  .report-signature:last-child:nth-child(odd){grid-column:1/-1;width:46%}
+}

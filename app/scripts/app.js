@@ -18,6 +18,12 @@ let authListenerRegistered=false;
 let authStateTask=Promise.resolve();
 let cachedActivityLogs=[];
 let activePreviewContext=null;
+let cachedCategories=[];
+let cachedPositions=[];
+let cachedAdminUsers=[];
+let currentTithers=[];
+let currentTitheSheet=null;
+let selectedSignedReportFile=null;
 
 let pendingTransactionAttachments=[];
 let originalTransactionAttachmentIds=new Set();
@@ -112,7 +118,8 @@ async function openStoredAttachment(id,download=false){
   else{window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),60000);}
 }
 function attachmentItemHtml(meta,context='transaction'){
-  return `<div class="attachment-item" data-attachment-id="${meta.id}"><span class="attachment-file-icon">${attachmentKind(meta.type)}</span><span class="attachment-info"><strong title="${escapeHtml(meta.name)}">${escapeHtml(meta.name)}</strong><small>${attachmentSize(meta.size)} • ${new Date(meta.createdAt).toLocaleDateString('pt-BR')}</small></span><span class="attachment-actions"><button type="button" class="attachment-action" data-attachment-view="${meta.id}" title="Visualizar">↗</button><button type="button" class="attachment-action" data-attachment-download="${meta.id}" title="Baixar">↓</button><button type="button" class="attachment-action danger" data-attachment-remove="${meta.id}" data-attachment-context="${context}" title="Remover">×</button></span></div>`;
+  const canRemove=!backend.configured||['administrador','tesouraria'].includes(currentUser?.role);
+  return `<div class="attachment-item" data-attachment-id="${meta.id}"><span class="attachment-file-icon">${attachmentKind(meta.type)}</span><span class="attachment-info"><strong title="${escapeHtml(meta.name)}">${escapeHtml(meta.name)}</strong><small>${attachmentSize(meta.size)} • ${new Date(meta.createdAt).toLocaleDateString('pt-BR')}</small></span><span class="attachment-actions"><button type="button" class="attachment-action" data-attachment-view="${meta.id}" title="Visualizar">↗</button><button type="button" class="attachment-action" data-attachment-download="${meta.id}" title="Baixar">↓</button>${canRemove?`<button type="button" class="attachment-action danger" data-attachment-remove="${meta.id}" data-attachment-context="${context}" title="Remover">×</button>`:''}</span></div>`;
 }
 function renderPendingAttachments(){
   const list=document.getElementById('transaction-attachments-list');
@@ -248,7 +255,10 @@ document.addEventListener('click',e=>{
 });
 
 function loadState(){try{return JSON.parse(localStorage.getItem(storageKey))||defaultState();}catch{return defaultState();}}
-function defaultState(){return{frequency:'Mensal',year:'2026',period:'Janeiro',previousBalance:6847.5,status:'Em elaboração',remoteReportId:null,lastCloudSync:null,generalAttachments:[],transactions:[{id:crypto.randomUUID(),type:'entrada',date:'2026-01-05',description:'Dízimos',category:'Dízimos',method:'Depósito bancário',value:2500,notes:'',attachments:[]},{id:crypto.randomUUID(),type:'entrada',date:'2026-01-08',description:'Oferta de gratidão',category:'Ofertas',method:'Dinheiro',value:450,notes:'',attachments:[]},{id:crypto.randomUUID(),type:'saida',date:'2026-01-07',description:'Conta de energia',category:'Contas',method:'Transferência',value:480.2,notes:'',attachments:[]}]};}
+function defaultState(){return{frequency:'Mensal',year:'2026',period:'Janeiro',previousBalance:6847.5,openingBalanceOverrides:{},status:'Em elaboração',remoteReportId:null,lastCloudSync:null,generalAttachments:[],transactions:[{id:crypto.randomUUID(),type:'entrada',date:'2026-01-01',description:'Dízimos',category:'Dízimos',method:'Depósito bancário',value:2500,notes:'',attachments:[]},{id:crypto.randomUUID(),type:'entrada',date:'2026-01-01',description:'Oferta de gratidão',category:'Ofertas',method:'Dinheiro',value:450,notes:'',attachments:[]},{id:crypto.randomUUID(),type:'saida',date:'2026-01-01',description:'Conta de energia',category:'Contas',method:'Transferência',value:480.2,notes:'',attachments:[]}]};}
+function ensureStateExtensions(){
+  if(!state.openingBalanceOverrides||typeof state.openingBalanceOverrides!=='object')state.openingBalanceOverrides={};
+}
 function saveState(){localStorage.setItem(storageKey,JSON.stringify(state));document.getElementById('last-update').textContent=new Date().toLocaleString('pt-BR');}
 function persistStateSilently(){localStorage.setItem(storageKey,JSON.stringify(state));}
 function setCloudStatus(kind,dateValue=null){
@@ -333,6 +343,20 @@ function defaultTransactionDate(){
   const range=getCurrentPeriod();
   return `${state.year}-${String(range.startMonth+1).padStart(2,'0')}-01`;
 }
+function monthInputValue(dateValue){
+  return String(dateValue||defaultTransactionDate()).slice(0,7);
+}
+function monthStorageValue(monthValue){
+  return `${String(monthValue||'').slice(0,7)}-01`;
+}
+function formatMonthYear(dateValue){
+  const date=new Date(`${String(dateValue).slice(0,10)}T00:00:00`);
+  return Number.isNaN(date.getTime())?'—':date.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+}
+function currentReferenceMonth(){
+  const range=getCurrentPeriod();
+  return `${state.year}-${String(range.startMonth+1).padStart(2,'0')}-01`;
+}
 function currentPeriodDates(){
   const range=getCurrentPeriod();
   const year=Number(state.year);
@@ -346,7 +370,22 @@ async function syncEntries(){
   setCloudStatus('saving');
   try{
     const {startDate,endDate}=currentPeriodDates();
-    state.transactions=await backend.entries(startDate,endDate);
+    const [entries,categories,positions]=await Promise.all([
+      backend.entries(startDate,endDate),
+      backend.categories(),
+      backend.positions().catch(()=>[])
+    ]);
+    state.transactions=entries;
+    cachedCategories=categories||[];
+    cachedPositions=positions||[];
+    ensureStateExtensions();
+    const override=state.openingBalanceOverrides[startDate];
+    if(override!==undefined){
+      state.previousBalance=Number(override)||0;
+    }else{
+      const previous=await backend.previousReport(startDate);
+      if(previous)state.previousBalance=Number(previous.closing_balance)||0;
+    }
     setCloudStatus(state.lastCloudSync?'saved':'connected',state.lastCloudSync);
     renderAdmin();
   }catch(error){
@@ -407,6 +446,15 @@ async function openAuthenticatedArea(user,{sync=true,navigate=true}={}){
   if(isMemberProfile(user)){
     document.getElementById('member-welcome').textContent=`Bem-vindo, ${user.name}`;
     if(navigate)showScreen('member-portal');
+    return;
+  }
+  if(user.mustChangePassword){
+    renderAdmin();
+    if(navigate)showScreen('admin-dashboard');
+    queueMicrotask(()=>{
+      const passwordModal=document.getElementById('change-password-modal');
+      if(!passwordModal.open)passwordModal.showModal();
+    });
     return;
   }
   if(sync)await syncEntries();
@@ -554,14 +602,33 @@ document.getElementById('auth-form').addEventListener('submit',async e=>{
       }
       clearVisitorSession();
       backend.logActivity('login',{description:'Login administrativo realizado'}).catch(console.error);
-      await syncEntries();
     }else{
       const users=getUsers();
       currentUser=users.find(u=>u.active&&u.name.toLowerCase()===email.toLowerCase()&&u.password===password);
       if(!currentUser)throw new Error('Usuário local não encontrado. Configure o Supabase para usar o login online.');
     }
-    document.getElementById('auth-form').reset();showScreen('admin-dashboard');
+    document.getElementById('auth-form').reset();
+    await openAuthenticatedArea(currentUser,{sync:true,navigate:true});
   }catch(error){console.error(error);alert(error.message||'Não foi possível entrar.');}
+});
+
+document.getElementById('change-password-form').addEventListener('submit',async event=>{
+  event.preventDefault();
+  const password=document.getElementById('new-own-password').value;
+  const confirmation=document.getElementById('confirm-own-password').value;
+  if(password!==confirmation){alert('As duas senhas precisam ser iguais.');return;}
+  try{
+    await backend.changeOwnPassword(password);
+    currentUser={...currentUser,mustChangePassword:false};
+    document.getElementById('change-password-form').reset();
+    document.getElementById('change-password-modal').close();
+    await syncEntries();
+    renderAdmin();
+    window.IBPVMotion?.toast('Senha atualizada','Seu acesso definitivo foi liberado.');
+  }catch(error){
+    console.error(error);
+    alert(error.message||'Não foi possível trocar a senha.');
+  }
 });
 
 document.getElementById('logout-btn').addEventListener('click',async()=>{
@@ -580,11 +647,38 @@ document.querySelectorAll('[data-open-modal]').forEach(btn=>btn.addEventListener
 async function cancelTransactionModal(){for(const meta of pendingTransactionAttachments){if(!originalTransactionAttachmentIds.has(meta.id))await removeAttachmentFile(meta.id).catch(()=>{});}pendingTransactionAttachments=[];originalTransactionAttachmentIds=new Set();modal.close();}
 document.getElementById('close-modal').onclick=cancelTransactionModal;
 document.getElementById('cancel-modal').onclick=cancelTransactionModal;
-function openTransactionModal(type,item=null){ensureAttachmentState();document.getElementById('transaction-form').reset();document.getElementById('transaction-type').value=type;document.getElementById('editing-id').value=item?.id||'';document.getElementById('modal-title').textContent=item?'Editar lançamento':type==='entrada'?'Adicionar entrada':'Adicionar despesa';document.getElementById('transaction-date').value=item?.date||defaultTransactionDate();document.getElementById('transaction-value').value=item?.value||'';document.getElementById('transaction-description').value=item?.description||'';document.getElementById('transaction-category').value=item?.category||'';document.getElementById('transaction-method').value=item?.method||'';document.getElementById('transaction-notes').value=item?.notes||'';pendingTransactionAttachments=[...(item?.attachments||[])];originalTransactionAttachmentIds=new Set(pendingTransactionAttachments.map(meta=>meta.id));renderPendingAttachments();modal.showModal();}
+function populateCategorySelect(type,selectedId=''){
+  const select=document.getElementById('transaction-category');
+  const options=cachedCategories.filter(category=>category.type===type);
+  select.innerHTML='<option value="">Selecione</option>'+options.map(category=>`<option value="${category.id}">${escapeHtml(category.name)}</option>`).join('');
+  select.value=selectedId||'';
+}
+function openTransactionModal(type,item=null){
+  if(item?.sourceType==='tithe_sheet'){
+    alert('Esta entrada é atualizada automaticamente pela Relação de dizimistas.');
+    return;
+  }
+  ensureAttachmentState();
+  document.getElementById('transaction-form').reset();
+  document.getElementById('transaction-type').value=type;
+  document.getElementById('editing-id').value=item?.id||'';
+  document.getElementById('modal-title').textContent=item?'Editar lançamento':type==='entrada'?'Adicionar entrada':'Adicionar despesa';
+  document.getElementById('transaction-date').value=monthInputValue(item?.date||defaultTransactionDate());
+  document.getElementById('transaction-value').value=item?.value||'';
+  document.getElementById('transaction-description').value=item?.description||'';
+  populateCategorySelect(type,item?.categoryId||'');
+  document.getElementById('transaction-method').value=item?.method||'';
+  document.getElementById('transaction-notes').value=item?.notes||'';
+  pendingTransactionAttachments=[...(item?.attachments||[])];
+  originalTransactionAttachmentIds=new Set(pendingTransactionAttachments.map(meta=>meta.id));
+  renderPendingAttachments();
+  modal.showModal();
+}
 
 document.getElementById('transaction-form').addEventListener('submit',async e=>{
   e.preventDefault();
-  const item={id:document.getElementById('editing-id').value||null,type:document.getElementById('transaction-type').value,date:document.getElementById('transaction-date').value,description:document.getElementById('transaction-description').value.trim(),category:document.getElementById('transaction-category').value.trim(),method:document.getElementById('transaction-method').value.trim(),value:Number(document.getElementById('transaction-value').value),notes:document.getElementById('transaction-notes').value.trim(),attachments:[...pendingTransactionAttachments]};
+  const categorySelect=document.getElementById('transaction-category');
+  const item={id:document.getElementById('editing-id').value||null,type:document.getElementById('transaction-type').value,date:monthStorageValue(document.getElementById('transaction-date').value),description:document.getElementById('transaction-description').value.trim(),categoryId:categorySelect.value,category:categorySelect.selectedOptions[0]?.textContent||'',method:document.getElementById('transaction-method').value.trim(),value:Number(document.getElementById('transaction-value').value),notes:document.getElementById('transaction-notes').value.trim(),attachments:[...pendingTransactionAttachments]};
   if(!dateBelongsToCurrentPeriod(item.date)){alert(`A data do lançamento deve estar dentro do período ${formatReportPeriod()}.`);return;}
   if(backend.configured)setCloudStatus('saving');
   try{
@@ -616,10 +710,45 @@ document.getElementById('transaction-form').addEventListener('submit',async e=>{
   }
 });
 
-function renderAdmin(){ensureAttachmentState();normalizePeriodState();const user=getFallbackUser();document.getElementById('logged-user').textContent=user?.name||'Usuário';document.getElementById('report-owner').textContent=user?.name||'—';document.getElementById('users-nav').hidden=backend.configured&&user?.role!=='administrador';document.getElementById('activity-log-nav').hidden=backend.configured&&!['administrador','conselho'].includes(user?.role);document.getElementById('report-frequency').value=state.frequency;document.getElementById('report-year').value=state.year;populatePeriodSelect();document.getElementById('previous-balance').value=state.previousBalance;document.getElementById('report-title').textContent=`Relatório Financeiro — ${formatReportPeriod()}`;renderTransactions();updateSummary();}
+function renderAdmin(){
+  ensureAttachmentState();
+  ensureStateExtensions();
+  normalizePeriodState();
+  const user=getFallbackUser();
+  document.getElementById('logged-user').textContent=user?.name||'Usuário';
+  document.getElementById('report-owner').textContent=user?.name||'—';
+  document.getElementById('users-nav').hidden=backend.configured&&user?.role!=='administrador';
+  document.getElementById('signed-reports-nav').hidden=backend.configured&&user?.role!=='administrador';
+  document.getElementById('tithes-nav').hidden=backend.configured&&!['administrador','tesouraria','conselho'].includes(user?.role);
+  document.getElementById('activity-log-nav').hidden=backend.configured&&!['administrador','conselho'].includes(user?.role);
+  const canManage=!backend.configured||['administrador','tesouraria'].includes(user?.role);
+  document.querySelectorAll('[data-open-modal="entrada"],[data-open-modal="saida"]').forEach(button=>button.hidden=!canManage);
+  document.getElementById('save-report').hidden=!canManage;
+  document.getElementById('publish-report').hidden=!canManage;
+  document.getElementById('previous-balance').disabled=!canManage;
+  document.getElementById('report-frequency').value=state.frequency;
+  document.getElementById('report-year').value=state.year;
+  populatePeriodSelect();
+  document.getElementById('previous-balance').value=state.previousBalance;
+  document.getElementById('report-title').textContent=`Relatório Financeiro — ${formatReportPeriod()}`;
+  renderTransactions();
+  updateSummary();
+}
 function renderTransactions(){const q=document.getElementById('search-transaction').value.toLowerCase();const transactions=getReportTransactions();renderList('entries-list',transactions.filter(t=>t.type==='entrada'&&matches(t,q)));renderList('expenses-list',transactions.filter(t=>t.type==='saida'&&matches(t,q)));}
 function matches(t,q){return !q||[t.description,t.category,t.method].some(v=>(v||'').toLowerCase().includes(q));}
-function renderList(id,items){const el=document.getElementById(id);if(!items.length){el.innerHTML='<div class="empty-state">Nenhum lançamento encontrado.</div>';return;}el.innerHTML='<div class="transaction-row header"><span>Data</span><span>Descrição</span><span>Categoria</span><span>Forma</span><span>Valor</span><span>Ações</span></div>'+items.map(t=>{const attachmentCount=(t.attachments||[]).length;return `<div class="transaction-row"><span>${new Date(t.date+'T00:00:00').toLocaleDateString('pt-BR')}</span><span><strong>${escapeHtml(t.description)}</strong>${attachmentCount?`<button class="attachment-badge" data-open-transaction-attachments="${t.id}" title="Abrir anexos">📎 ${attachmentCount}</button>`:''}</span><span>${escapeHtml(t.category||'—')}</span><span>${escapeHtml(t.method||'—')}</span><span class="amount">${brl(t.value)}</span><span class="actions"><button class="mini-btn" data-edit="${t.id}" title="Editar">✎</button><button class="mini-btn delete" data-delete="${t.id}" title="Excluir lançamento" aria-label="Excluir lançamento"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 11H7.7L7 9Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/></svg></button></span></div>`;}).join('');}
+function renderList(id,items){
+  const el=document.getElementById(id);
+  if(!items.length){el.innerHTML='<div class="empty-state">Nenhum lançamento encontrado.</div>';return;}
+  el.innerHTML='<div class="transaction-row header"><span>Mês</span><span>Descrição</span><span>Categoria</span><span>Forma</span><span>Valor</span><span>Ações</span></div>'+items.map(t=>{
+    const attachmentCount=(t.attachments||[]).length;
+    const linked=t.sourceType==='tithe_sheet';
+    const canManage=!backend.configured||['administrador','tesouraria'].includes(currentUser?.role);
+    const actions=linked
+      ?'<span class="automatic-entry-badge" title="Gerenciado pela relação mensal de dizimistas">Automático</span>'
+      :canManage?`<button class="mini-btn" data-edit="${t.id}" title="Editar">✎</button><button class="mini-btn delete" data-delete="${t.id}" title="Excluir lançamento" aria-label="Excluir lançamento"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 11H7.7L7 9Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/></svg></button>`:'<span class="automatic-entry-badge">Somente leitura</span>';
+    return `<div class="transaction-row"><span>${escapeHtml(formatMonthYear(t.date))}</span><span><strong>${escapeHtml(t.description)}</strong>${attachmentCount?`<button class="attachment-badge" data-open-transaction-attachments="${t.id}" title="Abrir anexos">📎 ${attachmentCount}</button>`:''}</span><span>${escapeHtml(t.category||'—')}</span><span>${escapeHtml(t.method||'—')}</span><span class="amount">${brl(t.value)}</span><span class="actions">${actions}</span></div>`;
+  }).join('');
+}
 function escapeHtml(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 document.addEventListener('click',async e=>{
   const edit=e.target.closest('[data-edit]');
@@ -643,7 +772,17 @@ document.addEventListener('click',async e=>{
     }
   }
 });
-function updateSummary(){const transactions=getReportTransactions();const entries=transactions.filter(t=>t.type==='entrada').reduce((s,t)=>s+t.value,0);const expenses=transactions.filter(t=>t.type==='saida').reduce((s,t)=>s+t.value,0);document.getElementById('summary-previous').textContent=brl(state.previousBalance);document.getElementById('summary-entries').textContent=brl(entries);document.getElementById('summary-expenses').textContent=brl(expenses);document.getElementById('summary-final').textContent=brl(state.previousBalance+entries-expenses);}
+function updateSummary(){
+  const transactions=getReportTransactions();
+  const entries=transactions.filter(t=>t.type==='entrada').reduce((s,t)=>s+t.value,0);
+  const expenses=transactions.filter(t=>t.type==='saida').reduce((s,t)=>s+t.value,0);
+  const available=state.previousBalance+entries;
+  document.getElementById('summary-previous').textContent=brl(state.previousBalance);
+  document.getElementById('summary-entries').textContent=brl(entries);
+  document.getElementById('summary-available').textContent=brl(available);
+  document.getElementById('summary-expenses').textContent=brl(expenses);
+  document.getElementById('summary-final').textContent=brl(available-expenses);
+}
 function currentReportPayload(){
   const items=getReportTransactions();
   const totalIncome=items.filter(t=>t.type==='entrada').reduce((sum,t)=>sum+t.value,0);
@@ -657,6 +796,11 @@ function currentReportPayload(){
     previousBalance:state.previousBalance,
     status:state.status,
     responsibleName:currentUser?.name||'Tesouraria',
+    signatories:cachedPositions.map(position=>({
+      code:position.code,
+      label:position.label,
+      name:position.full_name||''
+    })),
     transactions:items.map(item=>({
       id:item.id,type:item.type,date:item.date,description:item.description,
       category:item.category,method:item.method,value:item.value,notes:item.notes||''
@@ -679,7 +823,15 @@ async function recordPeriodChange(field,value){
 document.getElementById('report-frequency').addEventListener('change',async()=>{state.frequency=document.getElementById('report-frequency').value;state.period=getPeriodOptions(state.frequency)[0].value;state.remoteReportId=null;saveState();renderAdmin();recordPeriodChange('frequency',state.frequency);try{await syncEntries();setCloudStatus('pending');}catch(error){console.error(error);}});
 document.getElementById('report-year').addEventListener('change',async()=>{state.year=document.getElementById('report-year').value;state.remoteReportId=null;saveState();renderAdmin();recordPeriodChange('year',state.year);try{await syncEntries();setCloudStatus('pending');}catch(error){console.error(error);}});
 document.getElementById('report-period').addEventListener('change',async()=>{state.period=document.getElementById('report-period').value;state.remoteReportId=null;saveState();renderAdmin();recordPeriodChange('period',state.period);try{await syncEntries();setCloudStatus('pending');}catch(error){console.error(error);}});
-document.getElementById('previous-balance').addEventListener('change',()=>{state.previousBalance=Number(document.getElementById('previous-balance').value)||0;saveState();setCloudStatus('pending');renderAdmin();recordPeriodChange('previous_balance',state.previousBalance);});
+document.getElementById('previous-balance').addEventListener('change',()=>{
+  state.previousBalance=Number(document.getElementById('previous-balance').value)||0;
+  ensureStateExtensions();
+  state.openingBalanceOverrides[currentPeriodDates().startDate]=state.previousBalance;
+  saveState();
+  setCloudStatus('pending');
+  renderAdmin();
+  recordPeriodChange('previous_balance_manual_override',state.previousBalance);
+});
 document.getElementById('search-transaction').addEventListener('input',renderTransactions);
 document.getElementById('save-report').onclick=async()=>{
   saveState();
@@ -727,7 +879,11 @@ document.addEventListener('click',async e=>{
 const attachmentsModal=document.getElementById('attachments-modal');
 const generalFiles=document.getElementById('general-files');
 const generalDropzone=document.getElementById('general-dropzone');
-document.querySelector('[data-admin-tab="attachments"]').addEventListener('click',()=>{renderAttachmentManager();attachmentsModal.showModal();});
+document.querySelector('[data-admin-tab="attachments"]').addEventListener('click',()=>{
+  document.querySelector('.general-upload-card').hidden=backend.configured&&currentUser?.role==='conselho';
+  renderAttachmentManager();
+  attachmentsModal.showModal();
+});
 document.getElementById('close-attachments').addEventListener('click',()=>attachmentsModal.close());
 generalDropzone.addEventListener('click',()=>generalFiles.click());
 generalFiles.addEventListener('change',async()=>{await persistSelectedFiles(generalFiles.files,'general');generalFiles.value='';});
@@ -743,11 +899,91 @@ function renderAttachmentManager(){
   list.innerHTML=visible.length?visible.map(group=>`<section class="attachment-manager-group"><header class="attachment-manager-title"><strong>${escapeHtml(group.title)}</strong><small>${escapeHtml(group.subtitle)}</small></header>${group.items.map(meta=>attachmentItemHtml(meta,'manager')).join('')}</section>`).join(''):'<div class="attachment-empty">Nenhum anexo encontrado para este filtro.</div>';
 }
 
+const tithesModal=document.getElementById('tithes-modal');
+function selectedTitheMonth(){
+  return monthStorageValue(document.getElementById('tithes-reference-month').value);
+}
+function renderTithes(){
+  const list=document.getElementById('tithes-list');
+  const values=new Map((currentTitheSheet?.tithe_items||[]).map(item=>[item.tither_id,Number(item.amount||0)]));
+  const readOnly=currentUser?.role==='conselho';
+  if(!currentTithers.length){
+    list.innerHTML='<div class="empty-state">Nenhum nome cadastrado. Use “Cadastrar nome” para iniciar a relação.</div>';
+  }else{
+    list.innerHTML=currentTithers.map((tither,index)=>`<div class="tithe-row"><span>${index+1}</span><strong>${escapeHtml(tither.full_name)}</strong><label>Valor<input type="number" min="0" step="0.01" data-tither-amount="${tither.id}" value="${values.get(tither.id)||''}" ${readOnly?'disabled':''}></label></div>`).join('');
+  }
+  document.getElementById('add-tither').hidden=readOnly;
+  document.getElementById('save-tithes').hidden=readOnly;
+  updateTitheTotal();
+}
+function updateTitheTotal(){
+  const total=[...document.querySelectorAll('[data-tither-amount]')].reduce((sum,input)=>sum+(Number(input.value)||0),0);
+  document.getElementById('tithes-total-value').textContent=brl(total);
+}
+async function loadTitheMonth(){
+  if(!document.getElementById('tithes-reference-month').value){
+    document.getElementById('tithes-reference-month').value=monthInputValue(currentReferenceMonth());
+  }
+  const [tithers,sheet]=await Promise.all([backend.tithers(),backend.titheSheet(selectedTitheMonth())]);
+  currentTithers=tithers;
+  currentTitheSheet=sheet;
+  renderTithes();
+  backend.logActivity('tithe_sheet_viewed',{tableName:'tithe_sheets',recordId:sheet?.id,description:'Relação mensal de dizimistas visualizada',metadata:{reference_month:selectedTitheMonth()}}).catch(console.error);
+}
+document.getElementById('tithes-nav').addEventListener('click',async()=>{
+  document.getElementById('tithes-reference-month').value=monthInputValue(currentReferenceMonth());
+  tithesModal.showModal();
+  try{await loadTitheMonth();}catch(error){console.error(error);alert(error.message||'Não foi possível carregar a relação de dizimistas.');}
+});
+document.getElementById('close-tithes').addEventListener('click',()=>tithesModal.close());
+document.getElementById('load-tithes').addEventListener('click',()=>loadTitheMonth().catch(error=>alert(error.message)));
+document.getElementById('tithes-list').addEventListener('input',updateTitheTotal);
+document.getElementById('add-tither').addEventListener('click',async()=>{
+  const name=prompt('Informe o nome completo do dizimista:');
+  if(!name)return;
+  try{
+    await backend.createTither(name);
+    await loadTitheMonth();
+    window.IBPVMotion?.toast('Nome cadastrado','O nome ficará disponível nos próximos meses.');
+  }catch(error){console.error(error);alert(error.message||'Não foi possível cadastrar o nome.');}
+});
+document.getElementById('save-tithes').addEventListener('click',async()=>{
+  const items=[...document.querySelectorAll('[data-tither-amount]')].map(input=>({titherId:input.dataset.titherAmount,amount:Number(input.value)||0}));
+  try{
+    const saved=await backend.saveTitheSheet(selectedTitheMonth(),items);
+    currentTitheSheet=await backend.titheSheet(selectedTitheMonth());
+    await syncEntries();
+    markCloudSaved(saved.updated_at||new Date());
+    renderTithes();
+    window.IBPVMotion?.toast(`Salvo na nuvem às ${new Date(state.lastCloudSync).toLocaleTimeString('pt-BR')}`,'A entrada de Dízimos foi atualizada automaticamente.');
+  }catch(error){
+    console.error(error);
+    setCloudStatus(navigator.onLine?'error':'offline');
+    alert(error.message||'Não foi possível salvar a relação.');
+  }
+});
+
 const previewModal=document.getElementById('preview-modal');
+function buildTithePreview(){
+  const amountById=new Map((currentTitheSheet?.tithe_items||[]).map(item=>[item.tither_id,Number(item.amount||0)]));
+  const rows=currentTithers.map((tither,index)=>({index:index+1,name:tither.full_name,amount:amountById.get(tither.id)||0})).filter(item=>item.amount>0);
+  const total=rows.reduce((sum,item)=>sum+item.amount,0);
+  const label=formatMonthYear(selectedTitheMonth());
+  activePreviewContext={recordId:currentTitheSheet?.id,period:label};
+  document.getElementById('preview-content').innerHTML=`<div class="report-document tithe-report-document">
+    <header class="report-header"><div class="report-brand"><img class="report-brand-logo" src="${REPORT_LOGO_URL}" alt="Igreja Batista Palavra da Vida"></div><div class="report-heading"><span>CONTROLE INTERNO</span><h1>Relação de dizimistas</h1><p>${escapeHtml(label)}</p></div></header>
+    <table class="report-table tithe-report-table"><thead><tr><th>Nº</th><th>Nome</th><th>Valor</th></tr></thead><tbody>${rows.length?rows.map(item=>`<tr><td>${item.index}</td><td>${escapeHtml(item.name)}</td><td class="report-value">${brl(item.amount)}</td></tr>`).join(''):'<tr><td colspan="3" class="report-empty">Nenhum valor registrado.</td></tr>'}</tbody><tfoot><tr><td colspan="2">Total</td><td>${brl(total)}</td></tr></tfoot></table>
+    <footer class="report-footer"><p>Documento interno da Tesouraria e do Conselho Fiscal.</p><strong>Não publicar nomes e valores individuais.</strong></footer>
+  </div>`;
+  tithesModal.close();
+  previewModal.showModal();
+  backend.logActivity('tithe_pdf_downloaded',{tableName:'tithe_sheets',recordId:currentTitheSheet?.id,description:'Relação interna de dizimistas preparada para impressão',metadata:{reference_month:selectedTitheMonth()}}).catch(console.error);
+}
+document.getElementById('print-tithes').addEventListener('click',buildTithePreview);
 function previewRows(items, type){
   if(!items.length) return `<tr><td colspan="5" class="report-empty">Nenhum lançamento registrado.</td></tr>`;
   return items.map(t=>`<tr>
-    <td>${new Date(t.date+'T00:00:00').toLocaleDateString('pt-BR')}</td>
+    <td>${escapeHtml(formatMonthYear(t.date))}</td>
     <td><strong>${escapeHtml(t.description)}</strong></td>
     <td>${escapeHtml(t.category||'—')}</td>
     <td>${escapeHtml(t.method||'—')}</td>
@@ -762,6 +998,7 @@ function buildPreview(context=null){
   const totalOut=expenses.reduce((s,t)=>s+t.value,0);
   const finalBalance=state.previousBalance+totalIn-totalOut;
   const user=getFallbackUser();
+  const signatories=Array.isArray(state.signatories)&&state.signatories.length?state.signatories:cachedPositions.map(position=>({code:position.code,label:position.label,name:position.full_name||''}));
   activePreviewContext=context||{recordId:state.remoteReportId,period:formatReportPeriod()};
   const generatedAt=new Date().toLocaleString('pt-BR');
   document.getElementById('preview-content').innerHTML=`
@@ -788,7 +1025,7 @@ function buildPreview(context=null){
       <section class="report-section report-section-entry">
         <div class="report-section-title"><span class="report-section-icon">↓</span><strong>Entradas</strong></div>
         <table class="report-table">
-          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Forma de recebimento</th><th>Valor</th></tr></thead>
+          <thead><tr><th>Mês</th><th>Descrição</th><th>Categoria</th><th>Forma de recebimento</th><th>Valor</th></tr></thead>
           <tbody>${previewRows(entries,'entrada')}</tbody>
           <tfoot><tr><td colspan="4">Total de entradas</td><td>${brl(totalIn)}</td></tr></tfoot>
         </table>
@@ -797,7 +1034,7 @@ function buildPreview(context=null){
       <section class="report-section report-section-expense">
         <div class="report-section-title"><span class="report-section-icon">↑</span><strong>Despesas</strong></div>
         <table class="report-table">
-          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Forma de pagamento</th><th>Valor</th></tr></thead>
+          <thead><tr><th>Mês</th><th>Descrição</th><th>Categoria</th><th>Forma de pagamento</th><th>Valor</th></tr></thead>
           <tbody>${previewRows(expenses,'saida')}</tbody>
           <tfoot><tr><td colspan="4">Total de despesas</td><td>${brl(totalOut)}</td></tr></tfoot>
         </table>
@@ -807,10 +1044,16 @@ function buildPreview(context=null){
         <div><span>Saldo anterior</span><strong>${brl(state.previousBalance)}</strong></div>
         <span class="report-operator">+</span>
         <div class="positive"><span>Entradas</span><strong>${brl(totalIn)}</strong></div>
+        <span class="report-operator">=</span>
+        <div class="available"><span>Total disponível</span><strong>${brl(state.previousBalance+totalIn)}</strong></div>
         <span class="report-operator">−</span>
         <div class="negative"><span>Despesas</span><strong>${brl(totalOut)}</strong></div>
         <span class="report-operator">=</span>
-        <div class="final"><span>Saldo final</span><strong>${brl(finalBalance)}</strong></div>
+        <div class="final"><span>Saldo para o próximo mês</span><strong>${brl(finalBalance)}</strong></div>
+      </section>
+
+      <section class="report-signatures">
+        ${signatories.map(position=>`<div class="report-signature"><span></span><strong>${escapeHtml(position.name||'________________________________')}</strong><small>${escapeHtml(position.label)}</small></div>`).join('')}
       </section>
 
       <footer class="report-footer">
@@ -873,6 +1116,60 @@ document.getElementById('publish-report').onclick=async()=>{
     alert('Relatório publicado no Portal de Transparência.');
   }catch(error){console.error(error);if(backend.configured)setCloudStatus(navigator.onLine?'error':'offline');alert(error.message||'Não foi possível publicar o relatório.');}
 };
+
+const signedReportsModal=document.getElementById('signed-reports-modal');
+async function renderSignedReports(){
+  const list=document.getElementById('signed-reports-list');
+  try{
+    const reports=await backend.signedReports();
+    list.innerHTML=reports.length?reports.map(report=>`<article class="signed-report-row"><div><strong>${escapeHtml(formatMonthYear(report.reference_month))}</strong><span>${escapeHtml(report.file_name)}</span><small>${report.status==='publicado'?'Publicado no Portal de Transparência':'Aguardando publicação'}</small></div><div class="signed-report-actions"><button class="outline-btn" data-open-signed="${report.storage_path}">Visualizar</button>${report.status!=='publicado'?`<button class="primary-btn" data-publish-signed="${report.id}">Publicar no Portal</button>`:'<span class="published-badge">Publicado</span>'}</div></article>`).join(''):'<div class="empty-state">Nenhum relatório assinado enviado.</div>';
+  }catch(error){
+    console.error(error);
+    list.innerHTML='<div class="empty-state">Não foi possível carregar os relatórios assinados.</div>';
+  }
+}
+document.getElementById('signed-reports-nav').addEventListener('click',async()=>{
+  document.getElementById('signed-report-month').value=monthInputValue(currentReferenceMonth());
+  selectedSignedReportFile=null;
+  document.getElementById('signed-report-file-name').textContent='Nenhum arquivo selecionado';
+  signedReportsModal.showModal();
+  await renderSignedReports();
+});
+document.getElementById('close-signed-reports').addEventListener('click',()=>signedReportsModal.close());
+document.getElementById('choose-signed-report').addEventListener('click',()=>document.getElementById('signed-report-file').click());
+document.getElementById('signed-report-file').addEventListener('change',event=>{
+  selectedSignedReportFile=event.target.files[0]||null;
+  document.getElementById('signed-report-file-name').textContent=selectedSignedReportFile?.name||'Nenhum arquivo selecionado';
+});
+document.getElementById('upload-signed-report').addEventListener('click',async()=>{
+  const month=document.getElementById('signed-report-month').value;
+  if(!month||!selectedSignedReportFile){alert('Escolha o mês e o arquivo PDF assinado.');return;}
+  try{
+    const reportId=month===monthInputValue(currentReferenceMonth())?state.remoteReportId:null;
+    await backend.uploadSignedReport({file:selectedSignedReportFile,referenceMonth:monthStorageValue(month),reportId,userId:currentUser.id});
+    selectedSignedReportFile=null;
+    document.getElementById('signed-report-file').value='';
+    document.getElementById('signed-report-file-name').textContent='Nenhum arquivo selecionado';
+    await renderSignedReports();
+    window.IBPVMotion?.toast('PDF enviado','Revise o documento e clique em “Publicar no Portal”.');
+  }catch(error){console.error(error);alert(error.message||'Não foi possível enviar o relatório assinado.');}
+});
+document.getElementById('signed-reports-list').addEventListener('click',async event=>{
+  const open=event.target.closest('[data-open-signed]');
+  if(open){
+    try{window.open(await backend.signedReportUrl(open.dataset.openSigned),'_blank','noopener');}
+    catch(error){console.error(error);alert(error.message||'Não foi possível abrir o documento.');}
+  }
+  const publish=event.target.closest('[data-publish-signed]');
+  if(publish&&confirm('Publicar este documento assinado no Portal de Transparência?')){
+    try{
+      await backend.publishSignedReport(publish.dataset.publishSigned,currentUser.id);
+      await renderSignedReports();
+      window.IBPVMotion?.toast('Relatório assinado publicado','O documento já está disponível no portal.');
+    }catch(error){console.error(error);alert(error.message||'Não foi possível publicar o documento.');}
+  }
+});
+
 async function renderPublishedReports(){
   const grid=document.getElementById('published-reports');
   try{
@@ -881,7 +1178,10 @@ async function renderPublishedReports(){
     grid.innerHTML=list.map(r=>{
       const canView=Boolean(r.snapshot||r.has_snapshot);
       const pdfPath=r.pdf_storage_path||'';
-      return `<article class="report-card"><span class="pdf-icon">📄</span><h3>${escapeHtml(r.title)}</h3><p>${escapeHtml(r.period_type||r.frequency)} • Publicado em ${new Date(r.published_at||r.publishedAt).toLocaleDateString('pt-BR')}</p><div class="report-card-actions">${canView?`<button class="primary-btn" data-open-published="${r.id}">Visualizar relatório</button>`:''}${pdfPath?`<button class="outline-btn" data-download-published="${r.id}" data-pdf-path="${escapeHtml(pdfPath)}">Baixar PDF</button>`:''}</div>${!canView&&!pdfPath?'<small>Este relatório antigo possui apenas o resumo publicado.</small>':''}</article>`;
+      const signedPath=r.signed_report_path||'';
+      const titherCount=Number(r.tither_count||0);
+      const titheTotal=Number(r.tithe_total||0);
+      return `<article class="report-card"><span class="pdf-icon">📄</span><h3>${escapeHtml(r.title)}</h3><p>${escapeHtml(r.period_type||r.frequency)} • Publicado em ${new Date(r.published_at||r.publishedAt).toLocaleDateString('pt-BR')}</p><div class="public-report-summary"><span><strong>${titherCount}</strong> dizimista${titherCount===1?'':'s'}</span><span><strong>${brl(titheTotal)}</strong> total de dízimos</span></div><div class="report-card-actions">${canView?`<button class="primary-btn" data-open-published="${r.id}">Relatório gerado pelo portal</button>`:''}${pdfPath?`<button class="outline-btn" data-download-published="${r.id}" data-pdf-path="${escapeHtml(pdfPath)}">Baixar PDF gerado</button>`:''}${signedPath?`<button class="outline-btn" data-download-signed-public="${r.signed_report_id}" data-signed-path="${escapeHtml(signedPath)}" data-file-name="${escapeHtml(r.signed_report_file_name||'relatorio-assinado.pdf')}">Relatório assinado</button>`:''}</div>${!canView&&!pdfPath?'<small>Este relatório antigo possui apenas o resumo publicado.</small>':''}</article>`;
     }).join('');
   }catch(error){console.error(error);grid.innerHTML='<div class="report-card"><h3>Não foi possível carregar os relatórios</h3><p>Verifique sua conexão e tente novamente.</p></div>';}
 }
@@ -908,22 +1208,115 @@ document.addEventListener('click',async e=>{
       await backend.visitorActivity(currentVisitor||readVisitorSession(),'pdf_downloaded',download.dataset.downloadPublished).catch(console.error);
     }catch(error){console.error(error);alert(error.message||'Não foi possível baixar o PDF.');}
   }
+  const signedDownload=e.target.closest('[data-download-signed-public]');
+  if(signedDownload){
+    try{
+      const blob=await backend.downloadPublicSignedReport(signedDownload.dataset.signedPath);
+      const url=URL.createObjectURL(blob);
+      const link=document.createElement('a');
+      link.href=url;
+      link.download=signedDownload.dataset.fileName||'relatorio-assinado.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1500);
+      await backend.visitorActivity(currentVisitor||readVisitorSession(),'signed_report_downloaded',signedDownload.dataset.downloadSignedPublic).catch(console.error);
+    }catch(error){console.error(error);alert(error.message||'Não foi possível baixar o relatório assinado.');}
+  }
 });
 
 // Apresentação PowerPoint dinâmica para a assembleia
 
 const usersModal=document.getElementById('users-modal');
 const userEditModal=document.getElementById('user-edit-modal');
-function renderUsers(){const list=document.getElementById('users-list');const users=getUsers();list.innerHTML=users.map(u=>`<div class="user-row"><div class="user-avatar">${escapeHtml(u.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(u.name)}</strong><span>${escapeHtml(u.role)}</span></div><div><span class="user-status ${u.active?'active':'inactive'}">${u.active?'Ativo':'Inativo'}</span><small>${u.lastAccess?'Último acesso: '+new Date(u.lastAccess).toLocaleString('pt-BR'):'Nunca acessou'}</small></div><div class="user-actions"><button class="mini-btn" data-user-edit="${u.id}" title="Editar usuário">✎</button><button class="mini-btn delete" data-user-delete="${u.id}" title="Excluir usuário"><svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 11H7.7L7 9Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/></svg></button></div></div>`).join('')||'<div class="empty-state">Nenhum usuário cadastrado.</div>'; }
-function openUserEditor(user=null){document.getElementById('user-edit-form').reset();document.getElementById('user-edit-id').value=user?.id||'';document.getElementById('user-edit-title').textContent=user?'Editar usuário':'Novo usuário';document.getElementById('user-edit-name').value=user?.name||'';document.getElementById('user-edit-role').value=user?.role||'Tesouraria';document.getElementById('user-edit-status').value=String(user?.active??true);userEditModal.showModal();}
-document.getElementById('users-nav').onclick=()=>{if(backend.configured){alert('Por segurança, crie contas em Authentication → Users no Supabase e altere o perfil na tabela profiles.');return;}renderUsers();usersModal.showModal();};
-document.getElementById('profile-menu-btn').onclick=()=>{if(backend.configured){alert(`${currentUser?.name||'Usuário'}\nPerfil: ${currentUser?.role||'—'}`);return;}const u=currentUser;if(u)openUserEditor(u);};
+function roleLabel(role){return({administrador:'Administrador',tesouraria:'Tesouraria',conselho:'Conselho Fiscal',membro:'Membro'}[role]||role||'—');}
+function positionForUser(userId){return cachedPositions.find(position=>(position.assigned_user_id||position.user_id)===userId)||null;}
+function populatePositionSelect(selectedCode=''){
+  const select=document.getElementById('user-edit-position');
+  select.innerHTML='<option value="">Sem cargo de assinatura</option>'+cachedPositions.map(position=>`<option value="${position.code}">${escapeHtml(position.label)}</option>`).join('');
+  select.value=selectedCode||'';
+}
+function renderUsers(){
+  const list=document.getElementById('users-list');
+  list.innerHTML=cachedAdminUsers.map(user=>{
+    const position=positionForUser(user.id);
+    return `<div class="user-row"><div class="user-avatar">${escapeHtml((user.full_name||'?').charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(user.full_name||'Sem nome')}</strong><span>${escapeHtml(user.email||'')} • ${escapeHtml(roleLabel(user.role))}${position?` • ${escapeHtml(position.label)}`:''}</span></div><div><span class="user-status ${user.active?'active':'inactive'}">${user.active?'Ativo':'Inativo'}</span><small>${user.must_change_password?'Aguardando troca da senha temporária':'Senha definitiva configurada'}</small></div><div class="user-actions"><button class="mini-btn" data-user-edit="${user.id}" title="Editar usuário">✎</button></div></div>`;
+  }).join('')||'<div class="empty-state">Nenhum usuário cadastrado.</div>';
+}
+async function loadAdminUsers(){
+  const result=await backend.adminUsers();
+  cachedAdminUsers=result.users||[];
+  cachedPositions=result.positions||[];
+  renderUsers();
+}
+function openUserEditor(user=null){
+  document.getElementById('user-edit-form').reset();
+  document.getElementById('user-edit-id').value=user?.id||'';
+  document.getElementById('user-edit-title').textContent=user?'Editar usuário':'Novo usuário';
+  document.getElementById('user-edit-name').value=user?.full_name||'';
+  document.getElementById('user-edit-email').value=user?.email||'';
+  document.getElementById('user-edit-role').value=user?.role||'tesouraria';
+  document.getElementById('user-edit-status').value=String(user?.active??true);
+  populatePositionSelect(positionForUser(user?.id)?.code||'');
+  document.getElementById('reset-user-password').hidden=!user;
+  userEditModal.showModal();
+}
+document.getElementById('users-nav').onclick=async()=>{
+  if(!backend.configured){alert('A administração de usuários está disponível somente no sistema online.');return;}
+  usersModal.showModal();
+  try{await loadAdminUsers();}catch(error){console.error(error);alert(error.message||'Não foi possível carregar os usuários.');}
+};
+document.getElementById('profile-menu-btn').onclick=()=>{alert(`${currentUser?.name||'Usuário'}\nPerfil: ${roleLabel(currentUser?.role)}`);};
 document.getElementById('close-users').onclick=()=>usersModal.close();
 document.getElementById('new-user-btn').onclick=()=>openUserEditor();
 document.getElementById('close-user-edit').onclick=()=>userEditModal.close();
 document.getElementById('cancel-user-edit').onclick=()=>userEditModal.close();
-document.getElementById('user-edit-form').addEventListener('submit',e=>{e.preventDefault();const users=getUsers();const id=document.getElementById('user-edit-id').value;const name=document.getElementById('user-edit-name').value.trim();const password=document.getElementById('user-edit-password').value;const role=document.getElementById('user-edit-role').value;const active=document.getElementById('user-edit-status').value==='true';if(!name){return;}let user=users.find(u=>u.id===id);if(user){user.name=name;user.role=role;user.active=active;if(password){if(password.length<4){alert('A senha deve ter pelo menos 4 caracteres.');return;}user.password=password;}if(currentUser?.id===user.id)currentUser=user;}else{if(password.length<4){alert('Informe uma senha com pelo menos 4 caracteres.');return;}user={id:crypto.randomUUID(),name,password,role,active,lastAccess:null};users.push(user);}saveUsers(users);userEditModal.close();renderUsers();renderAdmin();});
-document.addEventListener('click',e=>{const edit=e.target.closest('[data-user-edit]');if(edit){const u=getUsers().find(x=>x.id===edit.dataset.userEdit);if(u)openUserEditor(u);}const del=e.target.closest('[data-user-delete]');if(del){const users=getUsers();if(users.length<=1){alert('É necessário manter pelo menos um usuário cadastrado.');return;}const u=users.find(x=>x.id===del.dataset.userDelete);if(u&&confirm(`Deseja excluir o usuário ${u.name}?`)){saveUsers(users.filter(x=>x.id!==u.id));renderUsers();}}});
+function showTemporaryPassword(password){
+  document.getElementById('temporary-password-value').textContent=password;
+  document.getElementById('temporary-password-modal').showModal();
+}
+document.getElementById('user-edit-form').addEventListener('submit',async event=>{
+  event.preventDefault();
+  const payload={
+    userId:document.getElementById('user-edit-id').value||undefined,
+    fullName:document.getElementById('user-edit-name').value.trim(),
+    email:document.getElementById('user-edit-email').value.trim(),
+    role:document.getElementById('user-edit-role').value,
+    positionCode:document.getElementById('user-edit-position').value||null,
+    active:document.getElementById('user-edit-status').value==='true'
+  };
+  try{
+    const result=payload.userId?await backend.updateAdminUser(payload):await backend.createAdminUser(payload);
+    userEditModal.close();
+    await loadAdminUsers();
+    if(result.temporaryPassword)showTemporaryPassword(result.temporaryPassword);
+    else window.IBPVMotion?.toast('Usuário atualizado','Permissão, cargo e status foram salvos.');
+  }catch(error){console.error(error);alert(error.message||'Não foi possível salvar o usuário.');}
+});
+document.addEventListener('click',event=>{
+  const edit=event.target.closest('[data-user-edit]');
+  if(edit){
+    const user=cachedAdminUsers.find(item=>item.id===edit.dataset.userEdit);
+    if(user)openUserEditor(user);
+  }
+});
+document.getElementById('reset-user-password').addEventListener('click',async()=>{
+  const userId=document.getElementById('user-edit-id').value;
+  if(!userId||!confirm('Gerar uma nova senha temporária para este usuário?'))return;
+  try{
+    const result=await backend.resetTemporaryPassword(userId);
+    userEditModal.close();
+    await loadAdminUsers();
+    showTemporaryPassword(result.temporaryPassword);
+  }catch(error){console.error(error);alert(error.message||'Não foi possível gerar a senha temporária.');}
+});
+const temporaryPasswordModal=document.getElementById('temporary-password-modal');
+document.getElementById('copy-temporary-password').addEventListener('click',async()=>{
+  await navigator.clipboard.writeText(document.getElementById('temporary-password-value').textContent);
+  window.IBPVMotion?.toast('Senha copiada','Entregue-a ao usuário por um canal seguro.');
+});
+document.getElementById('close-temporary-password').addEventListener('click',()=>temporaryPasswordModal.close());
+document.getElementById('confirm-temporary-password').addEventListener('click',()=>temporaryPasswordModal.close());
 
 const activityLogModal=document.getElementById('activity-log-modal');
 const ACTIVITY_LABELS={
@@ -935,11 +1328,16 @@ const ACTIVITY_LABELS={
   report_viewed:'Relatório visualizado',report_previewed:'Pré-visualização aberta',period_changed:'Período alterado',
   attachment_uploaded:'Anexo enviado',attachment_updated:'Anexo atualizado',attachment_deleted:'Anexo excluído',
   print_requested:'Impressão/PDF solicitada',pdf_downloaded:'PDF baixado',save_failed:'Falha de salvamento',
+  tither_created:'Dizimista cadastrado',tither_updated:'Cadastro de dizimista atualizado',
+  tithe_sheet_insert:'Relação de dízimos criada',tithe_sheet_update:'Relação de dízimos atualizada',tithe_sheet_delete:'Relação de dízimos removida',
+  tithe_sheet_viewed:'Relação de dízimos visualizada',tithe_pdf_downloaded:'Relação interna gerada',
+  signed_report_uploaded:'Relatório assinado enviado',signed_report_replaced:'Relatório assinado substituído',signed_report_published:'Relatório assinado publicado',signed_report_downloaded:'Relatório assinado baixado',
+  user_created:'Usuário criado',user_updated:'Usuário atualizado',temporary_password_reset:'Senha temporária redefinida',password_changed:'Senha alterada',
   insert:'Registro adicionado',update:'Registro atualizado',delete:'Registro excluído'
 };
 function activityCategory(action){
   if(/visitor|portal|login|logout|session/.test(action))return'access';
-  if(/income|expense/.test(action))return'financial';
+  if(/income|expense|tithe/.test(action))return'financial';
   if(/attachment/.test(action))return'attachment';
   if(/report|period|print|pdf/.test(action))return'report';
   return'other';
@@ -1092,7 +1490,7 @@ async function generatePowerPoint(){
     addMetricCard(slide,pptx,.62,1.78,2.8,'Saldo anterior',brl(state.previousBalance),'704128');
     addMetricCard(slide,pptx,3.72,1.78,2.8,'Entradas',brl(totalIn),'258A50');
     addMetricCard(slide,pptx,6.82,1.78,2.8,'Despesas',brl(totalOut),'C84545');
-    addMetricCard(slide,pptx,9.92,1.78,2.8,'Saldo final',brl(finalBalance),'3B261D');
+    addMetricCard(slide,pptx,9.92,1.78,2.8,'Saldo para o próximo mês',brl(finalBalance),'3B261D');
     slide.addChart(pptx.ChartType.bar,[{name:'Movimentação',labels:['Entradas','Despesas'],values:[totalIn,totalOut]}],{x:.72,y:3.55,w:5.8,h:2.75,catAxisLabelFontSize:11,valAxisLabelFontSize:9,showLegend:false,showTitle:false,showValue:true,showCatName:false,chartColors:['8B4B27','C84545'],showValue:false,gridLine:{color:'E6DCD4',width:1},showBorder:false});
     slide.addText(finalBalance>=0?'O período encerrou com saldo positivo.':'O período encerrou com saldo negativo.',{x:7.05,y:3.72,w:5.2,h:.42,fontFace:'Aptos Display',fontSize:21,bold:true,color:finalBalance>=0?'258A50':'C84545',margin:0});
     slide.addText(`As entradas totalizaram ${brl(totalIn)} e as despesas somaram ${brl(totalOut)}. O saldo disponível para o próximo período é ${brl(finalBalance)}.`,{x:7.05,y:4.38,w:5.25,h:1.15,fontFace:'Aptos',fontSize:14,color:'574A42',breakLine:false,margin:0.02,fit:'shrink'});

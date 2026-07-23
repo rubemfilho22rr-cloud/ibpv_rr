@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.7.0 - Relatório mensal, dízimos, assinaturas e usuários
+
+- Lançamentos passam a usar mês e ano como referência, sem exigir um dia.
+- Categorias são obrigatórias e aparecem corretamente na visualização, impressão e PDF.
+- Cálculo financeiro reorganizado em saldo anterior + entradas = total disponível − despesas = saldo para o próximo mês.
+- Saldo do relatório anterior é carregado automaticamente, com possibilidade de correção manual.
+- Nova Relação de dizimistas com cadastro reutilizável de nomes e valores mensais.
+- Cada relação mensal gera ou atualiza uma única entrada automática de Dízimos, evitando duplicidade.
+- Portal de Transparência mostra somente quantidade de dizimistas e total do mês, sem nomes nem valores individuais.
+- Relação nominal interna pode ser visualizada e impressa somente pela equipe financeira.
+- Cinco cargos de assinatura podem ser vinculados aos usuários e são congelados no relatório publicado.
+- Nova área de Relatórios assinados permite envio, revisão e publicação manual do PDF assinado.
+- Administração de usuários ganhou criação, edição, ativação, permissão, cargo e redefinição de senha.
+- Novos usuários recebem senha temporária e precisam criar uma senha definitiva no primeiro acesso.
+- Criação e redefinição de contas acontecem em função segura da Vercel, sem chave administrativa no navegador.
+- Histórico de atividades ampliado para dízimos, usuários, cargos e relatórios assinados.
+- Adicionada migração SQL aditiva e repetível, sem exclusão de lançamentos ou relatórios existentes.
+- Adicionados testes automatizados para os novos fluxos e controles de segurança.
+
 ## 1.6.0 - Portal de Transparência e histórico
 
 - Removido o painel branco indevido na transição final da apresentação.
