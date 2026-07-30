@@ -5,6 +5,7 @@
 - Removida a sequência de sublinhados usada como nome provisório nos cargos de assinatura sem usuário vinculado.
 - Cada responsável agora apresenta somente a linha longa destinada à assinatura.
 - Quando houver um usuário vinculado ao cargo, o nome permanece exibido em negrito abaixo da linha.
+- Adicionado um espaço vertical de 10 mm entre o quadro de totais e o bloco de assinaturas.
 
 ## Arquivos alterados
 
@@ -12,6 +13,7 @@
 - `tests/print-a4-layout.test.mjs`
 - `package.json`
 - `app/index.html`
+- `app/styles/stable-ui.css`
 - `CHANGELOG.md`
 
 ## Validação

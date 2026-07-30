@@ -43,6 +43,10 @@ test('assinaturas permanecem juntas no fim do fluxo do relatório', () => {
 test('cargo sem usuário vinculado não cria uma segunda linha de sublinhados', () => {
   assert.doesNotMatch(appSource, /position\.name\|\|'_+'/);
   assert.match(appSource, /signatoryName\?`<strong>/);
+  assert.match(
+    printStyles,
+    /body\.is-printing-report\s+\.report-signatures\s*\{[\s\S]*?margin:\s*10mm\s+4mm\s+0\s*!important/
+  );
 });
 
 test('cabeçalho impresso usa período na mesma linha e metadados em duas linhas', () => {
