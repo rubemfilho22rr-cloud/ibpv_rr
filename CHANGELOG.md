@@ -5,6 +5,7 @@
 - Removida a linha curta duplicada que aparecia quando um cargo de assinatura ainda não possuía usuário vinculado.
 - Mantida uma única linha longa para a assinatura; o nome continua em negrito quando existir.
 - Acrescentado o espaço vertical aproximado de um parágrafo antes do bloco de assinaturas na impressão.
+- Ampliado o espaço para escrever cada assinatura e a separação vertical entre as fileiras.
 
 ## 1.7.2 - Impressão A4 compacta
 

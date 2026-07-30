@@ -47,6 +47,10 @@ test('cargo sem usuário vinculado não cria uma segunda linha de sublinhados', 
     printStyles,
     /body\.is-printing-report\s+\.report-signatures\s*\{[\s\S]*?margin:\s*10mm\s+4mm\s+0\s*!important/
   );
+  assert.match(
+    printStyles,
+    /body\.is-printing-report\s+\.report-signature\s*\{[\s\S]*?min-height:\s*14mm\s*!important/
+  );
 });
 
 test('cabeçalho impresso usa período na mesma linha e metadados em duas linhas', () => {

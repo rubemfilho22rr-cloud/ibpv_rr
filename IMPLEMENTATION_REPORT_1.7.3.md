@@ -6,6 +6,7 @@
 - Cada responsável agora apresenta somente a linha longa destinada à assinatura.
 - Quando houver um usuário vinculado ao cargo, o nome permanece exibido em negrito abaixo da linha.
 - Adicionado um espaço vertical de 10 mm entre o quadro de totais e o bloco de assinaturas.
+- Cada campo de assinatura passou a reservar 14 mm de altura, com 5 mm entre as fileiras.
 
 ## Arquivos alterados
 
