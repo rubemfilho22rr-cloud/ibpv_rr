@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.7.2 - Impressão A4 compacta
+
+- Eliminadas as folhas vazias causadas por elementos invisíveis que continuavam ocupando espaço na impressão.
+- Removida a largura mínima responsiva que criava barra horizontal no relatório impresso.
+- Cabeçalho reduzido, com o período ao lado do título na mesma linha.
+- Informações do relatório reorganizadas em duas linhas compactas.
+- Tabelas ajustadas à largura útil do A4, com colunas proporcionais e quebra segura de textos longos.
+- Margens A4 preservadas em 12 mm.
+- Resumo financeiro e assinaturas compactados sem alterar o desenho da pré-visualização.
+- Assinaturas mantidas juntas no final do relatório: na primeira página quando houver espaço e na última página quando os lançamentos exigirem continuação.
+- Adicionados testes de regressão para largura A4, páginas vazias, metadados e assinaturas.
+
 ## 1.7.0 - Relatório mensal, dízimos, assinaturas e usuários
 
 - Lançamentos passam a usar mês e ano como referência, sem exigir um dia.

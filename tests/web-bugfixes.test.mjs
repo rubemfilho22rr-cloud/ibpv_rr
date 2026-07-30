@@ -25,7 +25,7 @@ test('impressão usa a pré-visualização atual sem abrir about:blank', () => {
 test('folha impressa é A4 e mantém a logo proporcional', () => {
   const css = read('app/styles/stable-ui.css');
   assert.match(css, /@page\s*{[\s\S]*?size:\s*A4 portrait;[\s\S]*?margin:\s*12mm;/);
-  assert.match(css, /body\.is-printing-report \.report-brand-logo\s*{[\s\S]*?width:\s*140px !important;[\s\S]*?max-width:\s*140px !important;[\s\S]*?max-height:\s*90px !important;[\s\S]*?height:\s*auto !important;[\s\S]*?object-fit:\s*contain !important;/);
+  assert.match(css, /body\.is-printing-report \.report-brand-logo\s*{[\s\S]*?width:\s*25mm !important;[\s\S]*?max-width:\s*25mm !important;[\s\S]*?max-height:\s*14mm !important;[\s\S]*?height:\s*auto !important;[\s\S]*?object-fit:\s*contain !important;/);
   assert.doesNotMatch(css, /@media\s+print[\s\S]*?\bimg\s*{[\s\S]*?width:\s*100%/);
 });
 

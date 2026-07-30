@@ -11,6 +11,10 @@
   --motion-ease: cubic-bezier(.22, 1, .36, 1);
 }
 
+.report-period-inline {
+  display: none;
+}
+
 /* Nenhuma tela ou conteúdo principal pode herdar blur persistente. */
 #app,
 #app .screen,
@@ -131,10 +135,30 @@ body.motion-fallback .page-shell {
     margin: 12mm;
   }
 
+  html,
   body.is-printing-report {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
     background: #fff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /*
+   * Na impressão, os elementos ocultos não podem continuar ocupando espaço.
+   * Esta regra evita folhas vazias produzidas pela aplicação atrás do modal.
+   */
+  body.is-printing-report > *:not(#preview-modal) {
+    display: none !important;
+  }
+
+  body.is-printing-report::before,
+  body.is-printing-report::after {
+    display: none !important;
+    content: none !important;
   }
 
   body.is-printing-report * {
@@ -193,18 +217,170 @@ body.motion-fallback .page-shell {
     max-width: 100% !important;
     margin: 0 auto !important;
     overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body.is-printing-report .report-header {
+    grid-template-columns: 31mm minmax(0, 1fr) !important;
+    min-height: 17mm !important;
+  }
+
+  body.is-printing-report .report-brand {
+    min-width: 0 !important;
+    padding: 1.8mm 2.5mm !important;
   }
 
   body.is-printing-report .report-brand-logo {
-    width: 140px !important;
-    max-width: 140px !important;
-    max-height: 90px !important;
+    width: 25mm !important;
+    max-width: 25mm !important;
+    max-height: 14mm !important;
     height: auto !important;
     object-fit: contain !important;
   }
 
+  body.is-printing-report .report-heading {
+    min-width: 0 !important;
+    padding: 2.2mm 4mm !important;
+  }
+
+  body.is-printing-report .report-heading > span {
+    margin: 0 !important;
+    font-size: 5.4pt !important;
+    line-height: 1 !important;
+  }
+
+  body.is-printing-report .report-heading h1 {
+    margin: 1mm 0 0 !important;
+    font-size: 11.5pt !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  body.is-printing-report .report-heading p {
+    display: none !important;
+  }
+
+  body.is-printing-report .report-period-inline {
+    display: inline !important;
+    color: inherit !important;
+    font: inherit !important;
+    letter-spacing: inherit !important;
+    text-transform: none !important;
+  }
+
+  /* Cinco informações distribuídas em exatamente duas linhas compactas. */
+  body.is-printing-report .report-meta {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+
+  body.is-printing-report .report-meta > div {
+    grid-column: span 2;
+    min-width: 0 !important;
+    padding: .9mm 2mm !important;
+  }
+
+  body.is-printing-report .report-meta > div:nth-child(n + 4) {
+    grid-column: span 3;
+    border-top: 1px solid #e4ebf4;
+  }
+
+  body.is-printing-report .report-meta > div:nth-child(3),
+  body.is-printing-report .report-meta > div:nth-child(5) {
+    border-right: 0 !important;
+  }
+
+  body.is-printing-report .report-meta span {
+    margin-bottom: .35mm !important;
+    font-size: 5.2pt !important;
+    line-height: 1 !important;
+  }
+
+  body.is-printing-report .report-meta strong {
+    overflow-wrap: anywhere;
+    font-size: 6.5pt !important;
+    line-height: 1.1 !important;
+  }
+
+  body.is-printing-report .report-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 2mm 0 0 !important;
+    overflow: visible !important;
+  }
+
+  body.is-printing-report .report-section-title {
+    min-height: 0 !important;
+    padding: .8mm 1.5mm !important;
+    font-size: 6.5pt !important;
+    line-height: 1 !important;
+  }
+
+  body.is-printing-report .report-section-icon {
+    width: 3.8mm !important;
+    height: 3.8mm !important;
+    font-size: 6.5pt !important;
+  }
+
+  /*
+   * Larguras fixadas em percentuais para simular o AutoFit do Excel sem
+   * permitir que qualquer conteúdo ultrapasse a área útil do A4.
+   */
+  body.is-printing-report .report-table {
+    display: table !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    overflow: visible !important;
+  }
+
+  body.is-printing-report .report-table .report-col-month {
+    width: 15%;
+  }
+
+  body.is-printing-report .report-table .report-col-description {
+    width: 31%;
+  }
+
+  body.is-printing-report .report-table .report-col-category {
+    width: 18%;
+  }
+
+  body.is-printing-report .report-table .report-col-payment {
+    width: 22%;
+  }
+
+  body.is-printing-report .report-table .report-col-value {
+    width: 14%;
+  }
+
   body.is-printing-report .report-table thead {
     display: table-header-group;
+  }
+
+  body.is-printing-report .report-table th,
+  body.is-printing-report .report-table td {
+    min-width: 0 !important;
+    padding: .7mm 1mm !important;
+    overflow: hidden !important;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    white-space: normal !important;
+    font-size: 6.2pt !important;
+    line-height: 1.12 !important;
+  }
+
+  body.is-printing-report .report-table th {
+    font-size: 5.2pt !important;
+  }
+
+  body.is-printing-report .report-table th:first-child,
+  body.is-printing-report .report-table td:first-child,
+  body.is-printing-report .report-table th:last-child,
+  body.is-printing-report .report-table td:last-child,
+  body.is-printing-report .report-value {
+    white-space: nowrap !important;
   }
 
   body.is-printing-report .report-table tr,
@@ -220,7 +396,67 @@ body.motion-fallback .page-shell {
     page-break-inside: auto;
   }
 
+  body.is-printing-report .report-summary-strip {
+    margin: 2.2mm 0 0 !important;
+    grid-template-columns:
+      minmax(0, 1fr) 3.5mm
+      minmax(0, 1fr) 3.5mm
+      minmax(0, 1.05fr) 3.5mm
+      minmax(0, 1fr) 3.5mm
+      minmax(0, 1.25fr) !important;
+  }
+
+  body.is-printing-report .report-summary-strip > div {
+    min-width: 0 !important;
+    padding: 1.6mm 1.2mm !important;
+  }
+
+  body.is-printing-report .report-summary-strip span {
+    margin-bottom: .5mm !important;
+    font-size: 4.7pt !important;
+    line-height: 1 !important;
+  }
+
+  body.is-printing-report .report-summary-strip strong,
+  body.is-printing-report .report-summary-strip .final strong {
+    font-size: 7.5pt !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  body.is-printing-report .report-operator {
+    min-height: 0 !important;
+    font-size: 8pt !important;
+  }
+
+  /*
+   * As assinaturas seguem o fluxo normal: ficam no fim da primeira página
+   * quando o conteúdo cabe e acompanham o relatório para a segunda quando
+   * os lançamentos realmente ocupam mais de uma página.
+   */
+  body.is-printing-report .report-signatures {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 3.5mm 12mm !important;
+    margin: 4mm 4mm 0 !important;
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  body.is-printing-report .report-signature {
+    min-height: 8mm !important;
+  }
+
+  body.is-printing-report .report-signature > span {
+    margin-bottom: 1.2mm !important;
+  }
+
   body.is-printing-report .report-signature strong {
+    font-size: 7pt !important;
     font-weight: 800;
+  }
+
+  body.is-printing-report .report-signature small {
+    margin-top: .35mm !important;
+    font-size: 5.7pt !important;
   }
 }

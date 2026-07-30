@@ -1013,7 +1013,7 @@ function buildPreview(context=null){
         </div>
         <div class="report-heading">
           <span>RELATÓRIO FINANCEIRO</span>
-          <h1>Relatório Financeiro</h1>
+          <h1>Relatório Financeiro <span class="report-period-inline">— ${escapeHtml(formatReportPeriod())}</span></h1>
           <p>${escapeHtml(formatReportPeriod())}</p>
         </div>
       </header>
@@ -1029,6 +1029,13 @@ function buildPreview(context=null){
       <section class="report-section report-section-entry">
         <div class="report-section-title"><span class="report-section-icon">↓</span><strong>Entradas</strong></div>
         <table class="report-table">
+          <colgroup>
+            <col class="report-col-month" />
+            <col class="report-col-description" />
+            <col class="report-col-category" />
+            <col class="report-col-payment" />
+            <col class="report-col-value" />
+          </colgroup>
           <thead><tr><th>Mês</th><th>Descrição</th><th>Categoria</th><th>Forma de recebimento</th><th>Valor</th></tr></thead>
           <tbody>${previewRows(entries,'entrada')}</tbody>
           <tfoot><tr><td colspan="4">Total de entradas</td><td>${brl(totalIn)}</td></tr></tfoot>
@@ -1038,6 +1045,13 @@ function buildPreview(context=null){
       <section class="report-section report-section-expense">
         <div class="report-section-title"><span class="report-section-icon">↑</span><strong>Despesas</strong></div>
         <table class="report-table">
+          <colgroup>
+            <col class="report-col-month" />
+            <col class="report-col-description" />
+            <col class="report-col-category" />
+            <col class="report-col-payment" />
+            <col class="report-col-value" />
+          </colgroup>
           <thead><tr><th>Mês</th><th>Descrição</th><th>Categoria</th><th>Forma de pagamento</th><th>Valor</th></tr></thead>
           <tbody>${previewRows(expenses,'saida')}</tbody>
           <tfoot><tr><td colspan="4">Total de despesas</td><td>${brl(totalOut)}</td></tr></tfoot>
