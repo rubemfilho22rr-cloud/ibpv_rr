@@ -294,12 +294,14 @@ body.flow-page{overflow:hidden!important}
   .report-summary-strip .final strong{font-size:10.5pt}
   .report-signatures{
     grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:10mm 18mm;
-    margin:14mm 8mm 8mm
+    gap:5mm 14mm;
+    margin:6mm 5mm 3mm;
+    break-inside:avoid;
+    page-break-inside:avoid
   }
-  .report-signature{min-height:16mm}
+  .report-signature{min-height:10mm}
   .report-signature>span{border-top:.3mm solid #303030;margin-bottom:2mm}
-  .report-signature strong{font-size:8pt}
-  .report-signature small{font-size:7pt;margin-top:.8mm}
+  .report-signature strong{font-size:8pt;font-weight:800}
+  .report-signature small{font-size:6.7pt;margin-top:.5mm}
   .report-signature:last-child:nth-child(odd){grid-column:1/-1;width:46%}
 }

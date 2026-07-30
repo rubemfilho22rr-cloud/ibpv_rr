@@ -209,8 +209,18 @@ body.motion-fallback .page-shell {
 
   body.is-printing-report .report-table tr,
   body.is-printing-report .report-summary-strip,
-  body.is-printing-report .report-footer {
+  body.is-printing-report .report-signatures {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  /* A tabela pode continuar em outra folha, mas cada lançamento fica inteiro. */
+  body.is-printing-report .report-section {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  body.is-printing-report .report-signature strong {
+    font-weight: 800;
   }
 }

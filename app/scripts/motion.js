@@ -3,7 +3,7 @@
   const qs=(s,r=document)=>r.querySelector(s);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
   const app=qs('#app');
-  let current='welcome';
+  let current='profile';
   let animating=false;
 
   function ease(t){return 1-Math.pow(1-t,4)}
@@ -22,7 +22,7 @@
   }
 
   function updateDots(name){qsa('.flow-dot').forEach(b=>b.classList.toggle('active',b.dataset.target===name))}
-  function updateSharedBrand(name){qs('#shared-brand')?.classList.toggle('visible',name!=='welcome')}
+  function updateSharedBrand(){qs('#shared-brand')?.classList.add('visible')}
 
   function paintParallax(start,end,progress,targetSection){
     const direction=end>start?1:-1;
@@ -90,7 +90,7 @@
 
   function initIntro(){
     const curtain=qs('#intro-curtain');
-    const reveal=()=>{if(!window.IBPVSessionGate?.isReady())return;setTimeout(()=>{curtain?.classList.add('is-gone');if(!document.body.classList.contains('app-page'))qs('[data-screen="welcome"]')?.classList.add('section-visible')},120)};
+    const reveal=()=>{if(!window.IBPVSessionGate?.isReady())return;setTimeout(()=>{curtain?.classList.add('is-gone');if(!document.body.classList.contains('app-page'))qs('[data-screen="profile"]')?.classList.add('section-visible')},120)};
     window.addEventListener('ibpv-session-ready',reveal,{once:true});
     if(window.IBPVSessionGate?.isReady())reveal();
   }
@@ -114,5 +114,5 @@
   };
 
   tagAnimatedElements();initIntro();initProgress();initMagneticButtons();
-  requestAnimationFrame(()=>{updateDots('welcome');paintParallax(0,0,1,qs('[data-screen="welcome"]'))});
+  requestAnimationFrame(()=>{updateDots('profile');updateSharedBrand();paintParallax(0,0,1,qs('[data-screen="profile"]'))});
 })();

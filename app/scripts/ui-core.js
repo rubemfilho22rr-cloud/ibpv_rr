@@ -16,10 +16,10 @@
 
   function guaranteeInitialScreen() {
     if (body.classList.contains('app-page')) return;
-    const welcome = document.querySelector('[data-screen="welcome"]');
-    if (!welcome) return;
-    welcome.classList.add('section-visible');
-    document.querySelectorAll('[data-screen="welcome"] [data-animate]').forEach((el) => {
+    const profile = document.querySelector('[data-screen="profile"]');
+    if (!profile) return;
+    profile.classList.add('section-visible');
+    document.querySelectorAll('[data-screen="profile"] [data-animate]').forEach((el) => {
       el.style.removeProperty('filter');
     });
   }

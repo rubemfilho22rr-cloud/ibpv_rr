@@ -140,7 +140,7 @@ function getUsers(){
 function saveUsers(users){localStorage.setItem(usersKey,JSON.stringify(users));}
 function getFallbackUser(){return currentUser||getUsers().find(u=>u.active)||null;}
 
-const FLOW_SCREENS=['welcome','about','profile','member-identification','restricted','admin-auth'];
+const FLOW_SCREENS=['profile','member-identification','restricted','admin-auth'];
 const APP_SCREENS=['member-portal','admin-dashboard'];
 const appRoot=document.getElementById('app');
 let screenTransitionLocked=false;
@@ -172,7 +172,7 @@ function setFlowRoute(target){
     member.classList.add('flow-route-hidden');
     restricted.classList.remove('flow-route-hidden');
     auth.classList.toggle('flow-route-hidden',target!=='admin-auth');
-  }else if(['welcome','about','profile'].includes(target) && target==='profile'){
+  }else if(target==='profile'){
     selectedFlowRoute=null;
     member.classList.add('flow-route-hidden');
     restricted.classList.add('flow-route-hidden');
@@ -192,7 +192,7 @@ function animateFlowTo(target,instant=false){
   const next=screens.find(s=>s.dataset.screen===target);
   if(next) appRoot.scrollTop=next.offsetTop;
 }
-function enterFlowMode(target='welcome',instant=false){
+function enterFlowMode(target='profile',instant=false){
   appRoot.classList.add('flow-mode');
   document.body.classList.add('flow-page');
   document.body.classList.remove('app-page','is-transitioning');
@@ -431,7 +431,8 @@ async function restoreVisitorSession(){
 
 function showLanding(){
   currentUser=null;
-  enterFlowMode('welcome',true);
+  document.getElementById('auth-form')?.reset();
+  enterFlowMode('profile',true);
 }
 
 function authenticatedAreaIsOpen(user){
@@ -592,7 +593,9 @@ function prepareAuth(){document.getElementById('auth-title').textContent='Login'
 document.getElementById('auth-form').addEventListener('submit',async e=>{
   e.preventDefault();
   const email=document.getElementById('admin-name').value.trim();
-  const password=document.getElementById('admin-password').value;
+  const passwordField=document.getElementById('admin-password');
+  const password=passwordField.value;
+  passwordField.value='';
   try{
     if(backend.configured){
       currentUser=await backend.signIn(email,password);
@@ -610,6 +613,7 @@ document.getElementById('auth-form').addEventListener('submit',async e=>{
     document.getElementById('auth-form').reset();
     await openAuthenticatedArea(currentUser,{sync:true,navigate:true});
   }catch(error){console.error(error);alert(error.message||'Não foi possível entrar.');}
+  finally{passwordField.value='';}
 });
 
 document.getElementById('change-password-form').addEventListener('submit',async event=>{
@@ -1052,14 +1056,9 @@ function buildPreview(context=null){
         <div class="final"><span>Saldo para o próximo mês</span><strong>${brl(finalBalance)}</strong></div>
       </section>
 
-      <section class="report-signatures">
+      <section class="report-signatures" aria-label="Assinaturas">
         ${signatories.map(position=>`<div class="report-signature"><span></span><strong>${escapeHtml(position.name||'________________________________')}</strong><small>${escapeHtml(position.label)}</small></div>`).join('')}
       </section>
-
-      <footer class="report-footer">
-        <p>“Tudo deve ser feito de forma decente e organizada.”</p>
-        <strong>1 Coríntios 14:40</strong>
-      </footer>
     </div>`;
   previewModal.showModal();
 }
