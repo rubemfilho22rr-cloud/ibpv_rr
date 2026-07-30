@@ -1,0 +1,38 @@
+RELATÓRIO FINANCEIRO IBPV — VERSÃO 1.1
+
+1. PERIODICIDADE E PERÍODOS
+- Mensal: seleção de cada mês individual.
+- Bimestral: Janeiro a Fevereiro, Março a Abril, etc.
+- Trimestral: Janeiro a Março, Abril a Junho, etc.
+- Quadrimestral: Janeiro a Abril, Maio a Agosto e Setembro a Dezembro.
+- Semestral: Janeiro a Junho e Julho a Dezembro.
+- Anual: Janeiro a Dezembro, definido automaticamente.
+- Ao mudar a periodicidade, o período anterior é substituído por uma opção válida.
+- Lançamentos precisam ter data dentro do ano e intervalo escolhidos.
+- Resumos, tabelas, pré-visualização, publicação, PDF e PowerPoint usam somente os lançamentos do período selecionado.
+
+2. PDF E IMPRESSÃO
+- O botão de impressão não imprime mais o modal inteiro.
+- Foi criado um documento A4 exclusivo em uma nova janela de impressão.
+- Margens, tamanhos, colunas, cores e quebras de página foram definidos em milímetros.
+- Removidos barra de rolagem, cabeçalho do modal, botões e espaços extras.
+- Relatórios curtos ficam em uma página.
+- Relatórios longos quebram somente quando necessário, repetindo o cabeçalho da tabela.
+- A pré-visualização e o documento impresso usam o mesmo conteúdo financeiro.
+
+3. POWERPOINT
+- Capa e encerramento padronizados com fundo claro.
+- Textos escuros para alto contraste.
+- Marrom e bronze usados somente como destaques.
+- Último slide redesenhado para evitar o problema de contraste da versão anterior.
+- Logo corrigida no cabeçalho para manter a proporção original.
+- Títulos, subtítulos e nomes dos arquivos usam o período completo.
+- Relatórios mensais mostram evolução por semana.
+- Relatórios bimestrais, trimestrais, quadrimestrais, semestrais e anuais mostram evolução por mês.
+
+4. NOMES DOS ARQUIVOS
+Exemplo trimestral:
+Relatorio-Financeiro-IBPV-Janeiro-a-Marco-2026.pptx
+
+5. OBSERVAÇÃO
+Para testar a impressão, abra a pré-visualização e clique no botão Imprimir / Salvar como PDF. A impressão direta pelo atalho Ctrl+P da tela principal não é o fluxo recomendado.

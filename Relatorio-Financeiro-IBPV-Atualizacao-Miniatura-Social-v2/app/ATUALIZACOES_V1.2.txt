@@ -1,0 +1,22 @@
+RELATÓRIO FINANCEIRO IBPV — VERSÃO 1.2
+
+CORREÇÃO PRINCIPAL
+- Restaurados os arquivos premium.css e motion.js, que não estavam sendo carregados na versão 1.1.
+- Reativada a apresentação inicial animada.
+- Reativada a navegação contínua e suave entre as seções da landing page.
+
+ANIMAÇÕES MODERNAS
+- Entrada da logomarca, título e botão em sequência.
+- Transição vertical contínua entre as etapas iniciais.
+- Efeito de profundidade e paralaxe durante a navegação.
+- Cartões de Membros e Tesouraria com elevação, brilho e microanimação dos ícones.
+- Transformação visual dos cartões para as telas de identificação e login.
+- Modais com zoom, desfoque e fundo em blur.
+- Dashboard com entrada sequencial da barra lateral, cabeçalho e conteúdo.
+- Linhas de lançamentos e botões de ação com respostas sutis ao mouse.
+- Toasts modernos para confirmações.
+- Fundo ambiente contínuo e discreto.
+
+COMPATIBILIDADE
+- As animações essenciais continuam visíveis mesmo quando o Windows está configurado para reduzir movimento, porém com duração menor.
+- Mantidas todas as correções da versão 1.1: periodicidade, períodos, PDF e PowerPoint.

@@ -1,0 +1,462 @@
+/*
+  IBPV UI Core — camada de estabilidade visual
+  Objetivo: impedir que filtros de transição permaneçam presos na interface.
+  As animações usam opacidade, deslocamento e escala; blur fica restrito ao backdrop dos modais.
+*/
+
+:root {
+  --motion-fast: 180ms;
+  --motion-medium: 420ms;
+  --motion-page: 820ms;
+  --motion-ease: cubic-bezier(.22, 1, .36, 1);
+}
+
+.report-period-inline {
+  display: none;
+}
+
+/* Nenhuma tela ou conteúdo principal pode herdar blur persistente. */
+#app,
+#app .screen,
+#app .center-card,
+#app .page-shell,
+#app .workspace,
+#app .workspace-content,
+#app .app-layout {
+  filter: none !important;
+}
+
+/* Fluxo contínuo: profundidade sem desfoque. */
+#app.flow-mode .flow-section .center-card,
+#app.flow-mode .flow-section .page-shell {
+  will-change: transform, opacity;
+  filter: none !important;
+  transition: opacity 180ms linear;
+}
+
+/* Entrada dos elementos sem blur para evitar estado visual preso. */
+[data-animate] {
+  opacity: 0;
+  transform: translateY(24px) scale(.985);
+  filter: none !important;
+}
+
+.section-visible [data-animate] {
+  animation: ibpvStableStagger 680ms var(--motion-ease) forwards;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes ibpvStableStagger {
+  from { opacity: 0; transform: translateY(24px) scale(.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* A primeira seção nunca fica invisível por falha de inicialização. */
+[data-screen="welcome"].section-visible [data-animate],
+body.ui-ready [data-screen="welcome"] [data-animate] {
+  animation-name: ibpvStableStagger;
+}
+
+/* Entrada das áreas completas. */
+.screen.app-view.app-reveal {
+  filter: none !important;
+  animation: ibpvStableAppReveal 500ms var(--motion-ease) both !important;
+}
+
+@keyframes ibpvStableAppReveal {
+  from { opacity: 0; transform: translateY(18px) scale(.975); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.app-view.app-reveal .workspace-header > *,
+.app-view.app-reveal .report-config,
+.app-view.app-reveal .action-row,
+.app-view.app-reveal .dashboard-grid {
+  filter: none !important;
+}
+
+/* Modais: o conteúdo é nítido. Somente o plano de fundo recebe blur. */
+dialog,
+dialog[open],
+dialog .modal-card {
+  filter: none !important;
+}
+
+dialog {
+  opacity: 0;
+  transform: translateY(18px) scale(.96);
+}
+
+dialog[open] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: ibpvStableDialogIn 360ms var(--motion-ease) both !important;
+}
+
+@keyframes ibpvStableDialogIn {
+  from { opacity: 0; transform: translateY(18px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+dialog::backdrop {
+  background: rgba(43, 29, 23, .34);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+/* O overlay de transformação nunca desfoca o aplicativo. */
+body.morphing #app { filter: none !important; }
+
+/* Fallback: se animações forem interrompidas, o conteúdo volta ao estado normal. */
+body.motion-fallback [data-animate],
+body.motion-fallback .screen,
+body.motion-fallback .center-card,
+body.motion-fallback .page-shell {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-animate],
+  .section-visible [data-animate],
+  .screen.app-view.app-reveal,
+  dialog[open] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body.is-printing-report {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /*
+   * Na impressão, os elementos ocultos não podem continuar ocupando espaço.
+   * Esta regra evita folhas vazias produzidas pela aplicação atrás do modal.
+   */
+  body.is-printing-report > *:not(#preview-modal) {
+    display: none !important;
+  }
+
+  body.is-printing-report::before,
+  body.is-printing-report::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  body.is-printing-report * {
+    visibility: hidden !important;
+  }
+
+  body.is-printing-report #preview-modal,
+  body.is-printing-report #preview-modal .preview-card,
+  body.is-printing-report #preview-content,
+  body.is-printing-report #preview-content * {
+    visibility: visible !important;
+  }
+
+  body.is-printing-report #preview-modal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    background: #fff !important;
+  }
+
+  body.is-printing-report #preview-modal::backdrop,
+  body.is-printing-report #preview-modal .modal-header,
+  body.is-printing-report #preview-modal .modal-actions {
+    display: none !important;
+  }
+
+  body.is-printing-report #preview-modal .preview-card,
+  body.is-printing-report #preview-content {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  body.is-printing-report .report-document {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body.is-printing-report .report-header {
+    grid-template-columns: 31mm minmax(0, 1fr) !important;
+    min-height: 17mm !important;
+  }
+
+  body.is-printing-report .report-brand {
+    min-width: 0 !important;
+    padding: 1.8mm 2.5mm !important;
+  }
+
+  body.is-printing-report .report-brand-logo {
+    width: 25mm !important;
+    max-width: 25mm !important;
+    max-height: 14mm !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+
+  body.is-printing-report .report-heading {
+    min-width: 0 !important;
+    padding: 2.2mm 4mm !important;
+  }
+
+  body.is-printing-report .report-heading > span {
+    margin: 0 !important;
+    font-size: 5.4pt !important;
+    line-height: 1 !important;
+  }
+
+  body.is-printing-report .report-heading h1 {
+    margin: 1mm 0 0 !important;
+    font-size: 11.5pt !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  body.is-printing-report .report-heading p {
+    display: none !important;
+  }
+
+  body.is-printing-report .report-period-inline {
+    display: inline !important;
+    color: inherit !important;
+    font: inherit !important;
+    letter-spacing: inherit !important;
+    text-transform: none !important;
+  }
+
+  /* Cinco informações distribuídas em exatamente duas linhas compactas. */
+  body.is-printing-report .report-meta {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+
+  body.is-printing-report .report-meta > div {
+    grid-column: span 2;
+    min-width: 0 !important;
+    padding: .9mm 2mm !important;
+  }
+
+  body.is-printing-report .report-meta > div:nth-child(n + 4) {
+    grid-column: span 3;
+    border-top: 1px solid #e4ebf4;
+  }
+
+  body.is-printing-report .report-meta > div:nth-child(3),
+  body.is-printing-report .report-meta > div:nth-child(5) {
+    border-right: 0 !important;
+  }
+
+  body.is-printing-report .report-meta span {
+    margin-bottom: .35mm !important;
+    font-size: 5.2pt !important;
+    line-height: 1 !important;
+  }
+
+  body.is-printing-report .report-meta strong {
+    overflow-wrap: anywhere;
+    font-size: 6.5pt !important;
+    line-height: 1.1 !important;
+  }
+
+  body.is-printing-report .report-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 2mm 0 0 !important;
+    overflow: visible !important;
+  }
+
+  body.is-printing-report .report-section-title {
+    min-height: 0 !important;
+    padding: .8mm 1.5mm !important;
+    font-size: 6.5pt !important;
+    line-height: 1 !important;
+  }
+
+  body.is-printing-report .report-section-icon {
+    width: 3.8mm !important;
+    height: 3.8mm !important;
+    font-size: 6.5pt !important;
+  }
+
+  /*
+   * Larguras fixadas em percentuais para simular o AutoFit do Excel sem
+   * permitir que qualquer conteúdo ultrapasse a área útil do A4.
+   */
+  body.is-printing-report .report-table {
+    display: table !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    overflow: visible !important;
+  }
+
+  body.is-printing-report .report-table .report-col-month {
+    width: 15%;
+  }
+
+  body.is-printing-report .report-table .report-col-description {
+    width: 31%;
+  }
+
+  body.is-printing-report .report-table .report-col-category {
+    width: 18%;
+  }
+
+  body.is-printing-report .report-table .report-col-payment {
+    width: 22%;
+  }
+
+  body.is-printing-report .report-table .report-col-value {
+    width: 14%;
+  }
+
+  body.is-printing-report .report-table thead {
+    display: table-header-group;
+  }
+
+  body.is-printing-report .report-table th,
+  body.is-printing-report .report-table td {
+    min-width: 0 !important;
+    padding: .7mm 1mm !important;
+    overflow: hidden !important;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    white-space: normal !important;
+    font-size: 6.2pt !important;
+    line-height: 1.12 !important;
+  }
+
+  body.is-printing-report .report-table th {
+    font-size: 5.2pt !important;
+  }
+
+  body.is-printing-report .report-table th:first-child,
+  body.is-printing-report .report-table td:first-child,
+  body.is-printing-report .report-table th:last-child,
+  body.is-printing-report .report-table td:last-child,
+  body.is-printing-report .report-value {
+    white-space: nowrap !important;
+  }
+
+  body.is-printing-report .report-table tr,
+  body.is-printing-report .report-summary-strip,
+  body.is-printing-report .report-signatures {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* A tabela pode continuar em outra folha, mas cada lançamento fica inteiro. */
+  body.is-printing-report .report-section {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  body.is-printing-report .report-summary-strip {
+    margin: 2.2mm 0 0 !important;
+    grid-template-columns:
+      minmax(0, 1fr) 3.5mm
+      minmax(0, 1fr) 3.5mm
+      minmax(0, 1.05fr) 3.5mm
+      minmax(0, 1fr) 3.5mm
+      minmax(0, 1.25fr) !important;
+  }
+
+  body.is-printing-report .report-summary-strip > div {
+    min-width: 0 !important;
+    padding: 1.6mm 1.2mm !important;
+  }
+
+  body.is-printing-report .report-summary-strip span {
+    margin-bottom: .5mm !important;
+    font-size: 4.7pt !important;
+    line-height: 1 !important;
+  }
+
+  body.is-printing-report .report-summary-strip strong,
+  body.is-printing-report .report-summary-strip .final strong {
+    font-size: 7.5pt !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  body.is-printing-report .report-operator {
+    min-height: 0 !important;
+    font-size: 8pt !important;
+  }
+
+  /*
+   * As assinaturas seguem o fluxo normal: ficam no fim da primeira página
+   * quando o conteúdo cabe e acompanham o relatório para a segunda quando
+   * os lançamentos realmente ocupam mais de uma página.
+   */
+  body.is-printing-report .report-signatures {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 5mm 12mm !important;
+    margin: 10mm 4mm 0 !important;
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  body.is-printing-report .report-signature {
+    min-height: 14mm !important;
+  }
+
+  body.is-printing-report .report-signature > span {
+    margin-bottom: 1.2mm !important;
+  }
+
+  body.is-printing-report .report-signature strong {
+    font-size: 7pt !important;
+    font-weight: 800;
+  }
+
+  body.is-printing-report .report-signature small {
+    margin-top: .35mm !important;
+    font-size: 5.7pt !important;
+  }
+}
