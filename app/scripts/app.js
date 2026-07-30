@@ -1071,7 +1071,10 @@ function buildPreview(context=null){
       </section>
 
       <section class="report-signatures" aria-label="Assinaturas">
-        ${signatories.map(position=>`<div class="report-signature"><span></span><strong>${escapeHtml(position.name||'________________________________')}</strong><small>${escapeHtml(position.label)}</small></div>`).join('')}
+        ${signatories.map(position=>{
+          const signatoryName=String(position.name||'').trim();
+          return `<div class="report-signature"><span></span>${signatoryName?`<strong>${escapeHtml(signatoryName)}</strong>`:''}<small>${escapeHtml(position.label)}</small></div>`;
+        }).join('')}
       </section>
     </div>`;
   previewModal.showModal();

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.3 - Linha de assinatura
+
+- Removida a linha curta duplicada que aparecia quando um cargo de assinatura ainda não possuía usuário vinculado.
+- Mantida uma única linha longa para a assinatura; o nome continua em negrito quando existir.
+
 ## 1.7.2 - Impressão A4 compacta
 
 - Eliminadas as folhas vazias causadas por elementos invisíveis que continuavam ocupando espaço na impressão.
